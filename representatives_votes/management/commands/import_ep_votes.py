@@ -93,5 +93,5 @@ def retrieve_json():
     if os.path.exists(json_file):
         os.remove(json_file)
     print "Download vote data from toutatis"
-    urllib.urlretrieve('http://toutatis.mm.staz.be/latest', json_file)
+    urllib.urlretrieve('http://toutatis.mm.staz.be/latest/', json_file)
     return json_file
