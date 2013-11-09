@@ -2,11 +2,11 @@
 from django.db import models
 from parltrack_meps.models import MEP
 
+
 class Proposal(models.Model):
     title = models.TextField(null=True)
-    code_name =  models.CharField(max_length=255, unique=True)
+    code_name = models.CharField(max_length=255, unique=True)
     date = models.DateField(default=None, null=True, blank=True)
-
 
     def __unicode__(self):
         return "%s [%s]" % (self.title if self.title else "no title", self.code_name)

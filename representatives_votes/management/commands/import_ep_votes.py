@@ -11,7 +11,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction, connection, reset_queries
 from django.utils.timezone import make_aware
 
-from parltrack_votes.models import Proposal, ProposalPart
+from representatives_votes.models import Proposal, ProposalPart
+
 
 class Command(BaseCommand):
     args = '<option file>'
@@ -35,25 +36,27 @@ class Command(BaseCommand):
         sys.stdout.write("\n")
         print datetime.now() - start
 
+
 def parse_date(date):
     return make_aware(parse(date), pytz.timezone("Europe/Brussels"))
+
 
 def create_in_db(vote):
     cur = connection.cursor()
     proposal_name = vote.get("report", vote["title"])
 
     proposal = Proposal.objects.create(
-        title = vote['title'],
-        date = vote['date'],
-        code_name = vote['code_name']
+        title=vote['title'],
+        date=vote['date'],
+        code_name=vote['code_name']
     )
     for part in proposal['parts']:
         proposal_part = ProposalPart.objects.create(
-                datetime = part['date'],
-                subject = part['part'],
-                part = part['subject'],
-                description = part[''],
-                proposal=proposal,
+            datetime=part['date'],
+            subject=part['part'],
+            part=part['subject'],
+            description=part[''],
+            proposal=proposal,
         )
         for votes in part['votes_for']:
             pass
@@ -61,9 +64,9 @@ def create_in_db(vote):
             # MEP.object.get()
             # CreateVote
             Vote.create(
-                choice = 'for',
-                mep = mep_id,
-                proposal_part = part
+                choice='for',
+                mep=mep_id,
+                proposal_part=part
             )
 
 
@@ -76,4 +79,3 @@ def retrieve_json():
     print "Download vote data from toutatis"
     urllib.urlretrieve('http://toutatis.mm.staz.be/latest', json_file)
     return json_file
-
