@@ -9,10 +9,11 @@ import ijson
 from dateutil.parser import parse
 
 from django.core.management.base import BaseCommand
-from django.db import transaction, connection, reset_queries
+from django.db import transaction, reset_queries
 from django.utils.timezone import make_aware
 
-from representatives_votes.models import Proposal, ProposalPart
+from representatives.models import Representative
+from representatives_votes.models import Proposal, ProposalPart, Vote
 
 
 class Command(BaseCommand):
@@ -65,7 +66,7 @@ def create_in_db(vote):
             proposal=proposal,
         )
         if not proposal_part:
-            proposal_part = ProposalPart.objects.filter(
+            proposal_part = ProposalPart.objects.create(
             datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
             part=part['subject'],
@@ -74,16 +75,23 @@ def create_in_db(vote):
         )
         else:
             proposal_part = proposal_part[0]
-        #for votes in part['votes_for']:
-            #pass
-            ## find mep
-            ## MEP.object.get()
-            ## CreateVote
-            #Vote.create(
-                #choice='for',
-                #mep=mep_id,
-                #proposal_part=part
-            #)
+
+        for choice in ('for', 'against', 'abstention'):
+            for mep_id in part.get('votes_%s' % choice, []):
+                if not Representative.objects.filter(remote_id=mep_id):
+                    continue
+                mep = Representative.objects.get(remote_id=mep_id)
+                vote = Vote.objects.filter(
+                    choice=choice,
+                    representative=mep,
+                    proposal_part=proposal_part,
+                )
+                if not vote:
+                    vote = Vote.objects.create(
+                        choice=choice,
+                        representative=mep,
+                        proposal_part=proposal_part,
+                    )
 
 
 def retrieve_json():
