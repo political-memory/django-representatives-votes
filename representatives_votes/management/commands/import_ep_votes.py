@@ -1,5 +1,6 @@
 import os
 import sys
+import pytz
 import urllib
 from os.path import join
 from datetime import datetime
@@ -42,32 +43,47 @@ def parse_date(date):
 
 
 def create_in_db(vote):
-    cur = connection.cursor()
-    proposal_name = vote.get("report", vote["title"])
+    #cur = connection.cursor()
+    #proposal_name = vote.get("report", vote["title"])
 
-    proposal = Proposal.objects.create(
-        title=vote['title'],
-        date=vote['date'],
-        code_name=vote['code_name']
-    )
-    for part in proposal['parts']:
-        proposal_part = ProposalPart.objects.create(
-            datetime=part['date'],
+    proposal = Proposal.objects.filter(code_name=vote["code_name"])
+    if not proposal:
+        proposal = Proposal.objects.create(
+            title=vote['title'],
+            date=vote['date'],
+            code_name=vote['code_name']
+        )
+    else:
+        proposal = proposal[0]
+
+    for part in vote['parts']:
+        proposal_part = ProposalPart.objects.filter(
+            datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
             part=part['subject'],
-            description=part[''],
+            #description=part[''],
             proposal=proposal,
         )
-        for votes in part['votes_for']:
-            pass
-            # find mep
-            # MEP.object.get()
-            # CreateVote
-            Vote.create(
-                choice='for',
-                mep=mep_id,
-                proposal_part=part
-            )
+        if not proposal_part:
+            proposal_part = ProposalPart.objects.filter(
+            datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
+            subject=part['part'],
+            part=part['subject'],
+            #description=part[''],
+            proposal=proposal,
+        )
+        else:
+            proposal_part = proposal_part[0]
+        #for votes in part['votes_for']:
+            #pass
+            ## find mep
+            ## MEP.object.get()
+            ## CreateVote
+            #Vote.create(
+                #choice='for',
+                #mep=mep_id,
+                #proposal_part=part
+            #)
 
 
 def retrieve_json():
