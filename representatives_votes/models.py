@@ -12,7 +12,7 @@ class Proposal(models.Model):
         return "%s [%s]" % (self.title if self.title else "no title", self.code_name)
 
     class Meta:
-        ordering = ('-_date', )
+        ordering = ('-date', )
 
 
 class ProposalPart(models.Model):
