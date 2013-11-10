@@ -56,23 +56,13 @@ def create_in_db(proposal_data, at):
     proposal = get_or_create(Proposal, title=proposal_data["title"], date=proposal_data["date"], code_name=proposal_data["code_name"], _id="code_name")
 
     for at_part, part in enumerate(proposal_data['parts'], 0):
-        proposal_part = ProposalPart.objects.filter(
+        proposal_part = get_or_create(ProposalPart,
             datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
             part=part['subject'],
             #description=part[''],
             proposal=proposal,
         )
-        if not proposal_part.exists():
-            proposal_part = ProposalPart.objects.create(
-            datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
-            subject=part['part'],
-            part=part['subject'],
-            #description=part[''],
-            proposal=proposal,
-        )
-        else:
-            proposal_part = proposal_part[0]
 
         to_create_vote = []
         for choice in ('for', 'against', 'abstention'):
