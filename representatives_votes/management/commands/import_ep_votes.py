@@ -53,9 +53,6 @@ def parse_date(date):
 
 
 def create_in_db(proposal_data, at):
-    #cur = connection.cursor()
-    #proposal_name = vote.get("report", vote["title"])
-
     proposal = get_or_create(Proposal, title=proposal_data["title"], date=proposal_data["date"], code_name=proposal_data["code_name"], _id="code_name")
 
     for at_part, part in enumerate(proposal_data['parts'], 0):
