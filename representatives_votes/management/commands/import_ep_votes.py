@@ -45,17 +45,17 @@ def create_in_db(proposal_data, at):
     #cur = connection.cursor()
     #proposal_name = vote.get("report", vote["title"])
 
-    proposal = Proposal.objects.filter(code_name=vote["code_name"])
+    proposal = Proposal.objects.filter(code_name=proposal_data["code_name"])
     if not proposal:
         proposal = Proposal.objects.create(
-            title=vote['title'],
-            date=vote['date'],
-            code_name=vote['code_name']
+            title=proposal_data['title'],
+            date=proposal_data['date'],
+            code_name=proposal_data['code_name']
         )
     else:
         proposal = proposal[0]
 
-    for at_part, part in enumerate(vote['parts'], 0):
+    for at_part, part in enumerate(proposal_data['parts'], 0):
         proposal_part = ProposalPart.objects.filter(
             datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
