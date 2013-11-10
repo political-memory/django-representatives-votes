@@ -74,6 +74,7 @@ def create_in_db(proposal_data, at):
         else:
             proposal_part = proposal_part[0]
 
+        to_create_vote = []
         for choice in ('for', 'against', 'abstention'):
             for mep_id in part.get('votes_%s' % choice, []):
                 mep = Representative.objects.get(remote_id=mep_id)
@@ -83,14 +84,15 @@ def create_in_db(proposal_data, at):
                     proposal_part=proposal_part,
                 )
                 if not vote.exists():
-                    vote = Vote.objects.create(
+                    to_create_vote.append(Vote(
                         choice=choice,
                         representative=mep,
                         proposal_part=proposal_part,
-                    )
+                    ))
 
         sys.stdout.write("%s %s/%s       \r" % (at, at_part, len(proposal_data["parts"])))
         sys.stdout.flush()
+        Vote.objects.bulk_create(to_create_vote)
 
 
 def retrieve_json():
