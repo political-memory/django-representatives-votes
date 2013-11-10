@@ -76,8 +76,6 @@ def create_in_db(proposal_data, at):
 
         for choice in ('for', 'against', 'abstention'):
             for mep_id in part.get('votes_%s' % choice, []):
-                if not Representative.objects.filter(remote_id=mep_id):
-                    continue
                 mep = Representative.objects.get(remote_id=mep_id)
                 vote = Vote.objects.filter(
                     choice=choice,
