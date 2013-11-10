@@ -21,10 +21,16 @@ def get_or_create(klass, _id=None, **kwargs):
         object = klass.objects.filter(**kwargs)
     else:
         object = klass.objects.filter(**{_id : kwargs[_id]})
+
     if object.exists():
         return object[0]
     else:
         return klass.objects.create(**kwargs)
+
+
+def append_if_not_exist(klass, listeu, **kwargs):
+    if not klass.objects.filter(**kwargs).exists():
+        listeu.append(klass(**kwargs))
 
 
 class Command(BaseCommand):
@@ -68,17 +74,11 @@ def create_in_db(proposal_data, at):
         for choice in ('for', 'against', 'abstention'):
             for mep_id in part.get('votes_%s' % choice, []):
                 mep = Representative.objects.get(remote_id=mep_id)
-                vote = Vote.objects.filter(
+                append_if_not_exist(Vote, to_create_vote,
                     choice=choice,
                     representative=mep,
                     proposal_part=proposal_part,
                 )
-                if not vote.exists():
-                    to_create_vote.append(Vote(
-                        choice=choice,
-                        representative=mep,
-                        proposal_part=proposal_part,
-                    ))
 
         sys.stdout.write("%s %s/%s       \r" % (at, at_part, len(proposal_data["parts"])))
         sys.stdout.flush()
