@@ -46,7 +46,7 @@ def create_in_db(proposal_data, at):
     #proposal_name = vote.get("report", vote["title"])
 
     proposal = Proposal.objects.filter(code_name=proposal_data["code_name"])
-    if not proposal:
+    if not proposal.exists():
         proposal = Proposal.objects.create(
             title=proposal_data['title'],
             date=proposal_data['date'],
@@ -63,7 +63,7 @@ def create_in_db(proposal_data, at):
             #description=part[''],
             proposal=proposal,
         )
-        if not proposal_part:
+        if not proposal_part.exists():
             proposal_part = ProposalPart.objects.create(
             datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
@@ -84,7 +84,7 @@ def create_in_db(proposal_data, at):
                     representative=mep,
                     proposal_part=proposal_part,
                 )
-                if not vote:
+                if not vote.exists():
                     vote = Vote.objects.create(
                         choice=choice,
                         representative=mep,
