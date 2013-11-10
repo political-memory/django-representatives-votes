@@ -31,10 +31,8 @@ class Command(BaseCommand):
         with transaction.commit_on_success():
             vote_iter = ijson.items(open(json_file), 'item')
             for i, vote in enumerate(vote_iter):
-                create_in_db(vote)
+                create_in_db(vote, at=i)
                 reset_queries()  # to avoid memleaks in debug mode
-                sys.stdout.write("%s\r" % i)
-                sys.stdout.flush()
         sys.stdout.write("\n")
         print datetime.now() - start
 
@@ -43,7 +41,7 @@ def parse_date(date):
     return make_aware(parse(date), pytz.timezone("Europe/Brussels"))
 
 
-def create_in_db(vote):
+def create_in_db(proposal_data, at):
     #cur = connection.cursor()
     #proposal_name = vote.get("report", vote["title"])
 
@@ -57,7 +55,7 @@ def create_in_db(vote):
     else:
         proposal = proposal[0]
 
-    for part in vote['parts']:
+    for at_part, part in enumerate(vote['parts'], 0):
         proposal_part = ProposalPart.objects.filter(
             datetime=make_aware(datetime.fromtimestamp(int(part['datetime']) / 1000), pytz.timezone("Europe/Brussels")),
             subject=part['part'],
@@ -92,6 +90,9 @@ def create_in_db(vote):
                         representative=mep,
                         proposal_part=proposal_part,
                     )
+
+        sys.stdout.write("%s %s/%s       \r" % (at, at_part, len(proposal_data["parts"])))
+        sys.stdout.flush()
 
 
 def retrieve_json():
