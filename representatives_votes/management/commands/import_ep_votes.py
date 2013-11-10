@@ -16,6 +16,17 @@ from representatives.models import Representative
 from representatives_votes.models import Proposal, ProposalPart, Vote
 
 
+def get_or_create(klass, _id=None, **kwargs):
+    if _id is None:
+        object = klass.objects.filter(**kwargs)
+    else:
+        object = klass.objects.filter(**{_id : kwargs[_id]})
+    if object.exists():
+        return object[0]
+    else:
+        return klass.objects.create(**kwargs)
+
+
 class Command(BaseCommand):
     args = '<option file>'
     help = 'Import vote of the ep parliaments'
@@ -45,15 +56,7 @@ def create_in_db(proposal_data, at):
     #cur = connection.cursor()
     #proposal_name = vote.get("report", vote["title"])
 
-    proposal = Proposal.objects.filter(code_name=proposal_data["code_name"])
-    if not proposal.exists():
-        proposal = Proposal.objects.create(
-            title=proposal_data['title'],
-            date=proposal_data['date'],
-            code_name=proposal_data['code_name']
-        )
-    else:
-        proposal = proposal[0]
+    proposal = get_or_create(Proposal, title=proposal_data["title"], date=proposal_data["date"], code_name=proposal_data["code_name"], _id="code_name")
 
     for at_part, part in enumerate(proposal_data['parts'], 0):
         proposal_part = ProposalPart.objects.filter(
