@@ -190,7 +190,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
     # print 'Found : "%s" (%d), for "%s"' % (full_name, mep_ep_id, mep)
     try:
         representative = Representative.objects.get(remote_id=mep_ep_id)
-    except Representative.ObjectDoesNotExist:
+    except Representative.DoesNotExist:
         print("⚠ WARNING: failed to get mep on internal db but found on parltrack !")
         print('%s (%s)' % (mep, representative_group))
         return None
