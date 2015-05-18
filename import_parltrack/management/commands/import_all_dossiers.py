@@ -43,7 +43,6 @@ class Command(BaseCommand):
     If given a file in arg use it instead download it from parltrack'
 
     def handle(self, *args, **options):
-        print(args)
         if len(args) == 2:
             start_date = date_parse(args[0])
             end_date = date_parse(args[1])
@@ -54,9 +53,10 @@ class Command(BaseCommand):
         print "import proposals"
         for vote_data in ijson.items(open(json_file), 'item'):
             vote_date = date_parse(vote_data['ts'])
-            print(vote_date)
-            if vote_date >= start_date and vote_date <= end_date:
-                proposal, created = parse_vote_data(vote_data)
+            if len(args) == 2 and vote_date >= start_date and vote_date <= end_date:
+                parse_vote_data(vote_data)
+            elif len(args) != 2:
+                parse_vote_data(vote_data)
 
 
 def retrieve_xz_json(url, destination):

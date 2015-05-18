@@ -1,7 +1,6 @@
 # coding: utf-8
 import re
 import json
-import functools
 
 from django.db import transaction
 
@@ -32,9 +31,11 @@ def parse_dossier_data(dossier_data, skip_old = True):
         return
     
     dossier.title = dossier_data['procedure']['title']
-    dossier.link = dossier_data['meta']['source'] 
+    dossier.link = dossier_data['meta']['source']
     dossier.save()
-
+    
+    print('Dossier: ' + dossier.title)
+        
     Vote.objects.filter(proposal__dossier=dossier).delete()
     Proposal.objects.filter(dossier=dossier).delete()
 
@@ -66,6 +67,8 @@ def parse_vote_data(vote_data, skip_old = True):
         link=dossier_link
     )
 
+    print('Dossier: ' + dossier.title)
+    
     return parse_proposal_data(
         proposal_data=vote_data,
         dossier=dossier,
@@ -103,11 +106,14 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
         total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
         total_against=int(proposal_data.get('Against', {}).get('total', 0))
     )
+
+    print('Proposal: ' + proposal.title)
     
     if skip_old and not created:
         return (proposal, False)
 
     positions = ['For', 'Abstain', 'Against']
+    i = 0
     for position in positions:
         for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
             group_name = group_vote_data['group']
@@ -137,6 +143,9 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                         position=position.lower(),
                         representative_name=representative_name
                     )
+                i += 1
+                print("\r %d" % i),
+                
     return (proposal, True)
 
 def find_matching_representatives_in_db(mep, vote_date, representative_group):        
@@ -185,7 +194,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         return None
     
     mep_ep_id = mep_ep_json['UserID']
-    full_name = mep_ep_json['Name']['full']
+    # full_name = mep_ep_json['Name']['full']
 
     # print 'Found : "%s" (%d), for "%s"' % (full_name, mep_ep_id, mep)
     try:
@@ -194,6 +203,6 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         print("⚠ WARNING: failed to get mep on internal db but found on parltrack !")
         print('%s (%s)' % (mep, representative_group))
         return None
-        
+
     return representative
 
