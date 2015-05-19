@@ -67,8 +67,8 @@ def parse_vote_data(vote_data, skip_old = True):
         link=dossier_link
     )
 
-    print('Dossier: ' + dossier.title)
-    
+    print('Dossier: %s (%s)' % (dossier.title, dossier_ref))
+
     return parse_proposal_data(
         proposal_data=vote_data,
         dossier=dossier,
@@ -190,7 +190,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         mep_ep_json = json.loads(json_file)
     except ValueError:
         print("⚠ WARNING: failed to get mep on parltrack !")
-        print('%s (%s)' % (mep, representative_group))
+        print('%s (%s)' % (mep.encode('utf-8'), representative_group.encode('utf-8')))
         return None
     
     mep_ep_id = mep_ep_json['UserID']
@@ -201,7 +201,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         representative = Representative.objects.get(remote_id=mep_ep_id)
     except Representative.DoesNotExist:
         print("⚠ WARNING: failed to get mep on internal db but found on parltrack !")
-        print('%s (%s)' % (mep, representative_group))
+        print('%s (%s)' % (mep.encode('utf-8'), representative_group.encode('utf-8')))
         return None
 
     return representative
