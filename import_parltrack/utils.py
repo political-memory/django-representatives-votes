@@ -34,7 +34,7 @@ def parse_dossier_data(dossier_data, skip_old = True):
     dossier.link = dossier_data['meta']['source']
     dossier.save()
     
-    print('Dossier: ' + dossier.title)
+    print('Dossier: ' + dossier.title.encode('utf-8'))
         
     Vote.objects.filter(proposal__dossier=dossier).delete()
     Proposal.objects.filter(dossier=dossier).delete()
@@ -52,10 +52,10 @@ def parse_vote_data(vote_data, skip_old = True):
         if dossier_ref:
             dossier_title = get_dossier_title(dossier_ref)
             if not dossier_title:
-                print('No dossier title for proposal %s (%s)' % (vote_data['title'], vote_data.get('report', '')))
+                print('No dossier title for proposal %s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8')))
                 dossier_title = vote_data['title']
         else:
-            print('No dossier for proposal %s (%s)' % (vote_data['title'], vote_data.get('report', '')))
+            print('No dossier for proposal %s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8')))
             dossier_title = vote_data['title']
             dossier_ref = vote_data.get('report', '')
                 
@@ -67,7 +67,7 @@ def parse_vote_data(vote_data, skip_old = True):
         link=dossier_link
     )
 
-    print('Dossier: %s (%s)' % (dossier.title, dossier_ref))
+    print('Dossier: %s (%s)' % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
         proposal_data=vote_data,
@@ -85,7 +85,7 @@ def get_dossier_title(dossier_ref):
         dossier_json = json.loads(json_file)
     except ValueError:
         print("⚠ WARNING: failed to get dossier on parltrack !")
-        print('%s' % (dossier_ref))
+        print('%s' % dossier_ref.encode('utf-8'))
         return None
 
     return dossier_json['procedure']['title']
@@ -107,7 +107,7 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
         total_against=int(proposal_data.get('Against', {}).get('total', 0))
     )
 
-    print('Proposal: ' + proposal.title)
+    print('Proposal: ' + proposal.title.encode('utf-8'))
     
     if skip_old and not created:
         return (proposal, False)
