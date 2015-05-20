@@ -1,6 +1,7 @@
 # coding: utf-8
 import re
 import json
+import functools
 
 from django.db import transaction
 
@@ -11,8 +12,9 @@ from pytz import timezone as date_timezone
 
 from urllib import urlopen
 
-from representatives.models import Mandate, Representative
+from representatives.models import Mandate
 from representatives_votes.models import Dossier, Proposal, Vote
+from import_parltrack_votes.models import Matching
 
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
@@ -42,7 +44,6 @@ def parse_dossier_data(dossier_data, skip_old = True):
     for proposal_data in dossier_data['votes']:
         parse_proposal_data(proposal_data, dossier)
 
-@transaction.atomic
 def parse_vote_data(vote_data, skip_old = True):
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
@@ -123,13 +124,13 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                 else:
                     representative_name = vote_data
                 
-                representative = find_matching_representatives_in_db(
-                    representative_name, proposal.datetime, group_name
+                representative_id = find_matching_representatives_in_db(
+                    representative_name, proposal.datetime.date(), group_name
                 )
-                if representative:
+                if representative_id:
                     Vote.objects.create(
                         proposal=proposal,
-                        representative_remote_id=representative.remote_id,
+                        representative_remote_id=representative_id,
                         position=position.lower()
                     )
                 else:
@@ -148,9 +149,24 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                 
     return (proposal, True)
 
-def find_matching_representatives_in_db(mep, vote_date, representative_group):        
 
-    # Only select representatives that are on mandate during the vote
+def memoize(obj):
+    '''
+    memoize decorator for keeping representative matches in cache
+    '''
+    cache = obj.cache = {}
+
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        key = str(args) + str(kwargs)
+        if key not in cache:
+            cache[key] = obj(*args, **kwargs)
+        return cache[key]
+    return memoizer
+
+@memoize
+def find_matching_representatives_in_db(mep, vote_date, representative_group):
+    # Only select representatives that have a country mandate at the vote date
     def representative_filter(**args):
         mandates = Mandate.objects.select_related('representative').filter(
             group__kind='country',
@@ -179,30 +195,37 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
     if representative:
         # TODO Ugly hack, we should handle cases where there are multiple results
         representative = representative[0]
-        return representative
-    
-    # print "WARNING: failed to get mep using internal db, fall back on parltrack"
-    url = 'http://parltrack.euwiki.org/mep/%s?format=json' % (mep.encode('utf-8'))
-    # print(url)
-    
-    json_file = urlopen(url).read()
+        return representative.remote_id
+
     try:
-        mep_ep_json = json.loads(json_file)
-    except ValueError:
-        print("⚠ WARNING: failed to get mep on parltrack !")
-        print('%s (%s)' % (mep.encode('utf-8'), representative_group.encode('utf-8')))
-        return None
-    
-    mep_ep_id = mep_ep_json['UserID']
-    # full_name = mep_ep_json['Name']['full']
+        mep = mep.encode('utf-8')
+        # Try by searching in the Matching table, avoid many conexions to parltrack
+        matching = Matching.objects.get(mep_name=mep, mep_group=representative_group)
+        return matching.representative_remote_id
+    except Matching.DoesNotExist:
+        mep_display = '%s (%s)' % (mep, representative_group.encode('utf-8'))
+        print("WARNING: failed to get mep using internal db, fall back on parltrack"),
+        print(mep_display)
+        url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
+        
+        json_file = urlopen(url).read()
+        try:
+            mep_ep_json = json.loads(json_file)
+        except ValueError:
+            print("⚠ WARNING: failed to get mep on parltrack !"),
+            print(mep_display)
+            Matching.objects.create(
+                mep_name=mep,
+                mep_group=representative_group,
+                representative_remote_id=None
+            )
+            return None
 
-    # print 'Found : "%s" (%d), for "%s"' % (full_name, mep_ep_id, mep)
-    try:
-        representative = Representative.objects.get(remote_id=mep_ep_id)
-    except Representative.DoesNotExist:
-        print("⚠ WARNING: failed to get mep on internal db but found on parltrack !")
-        print('%s (%s)' % (mep.encode('utf-8'), representative_group.encode('utf-8')))
-        return None
-
-    return representative
-
+        mep_remote_id = mep_ep_json['UserID']
+        
+        Matching.objects.create(
+            mep_name=mep,
+            mep_group=representative_group,
+            representative_remote_id=mep_remote_id
+        )
+        return mep_remote_id
