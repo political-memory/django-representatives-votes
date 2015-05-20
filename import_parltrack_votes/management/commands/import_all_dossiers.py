@@ -16,7 +16,8 @@
 # License along with django-parltrack-votes.
 # If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2013  Laurent Peuch <cortex@worlddomination.be>
+# Copyright (C) 2013 Laurent Peuch <cortex@worlddomination.be>
+# Copyright (c) 2015 Arnaud Fabre <af@laquadrature.net>
 
 import os
 import ijson
@@ -24,7 +25,7 @@ import urllib
 from os.path import join
 
 from django.core.management.base import BaseCommand
-from import_parltrack.utils import parse_vote_data
+from import_parltrack_votes.utils import parse_vote_data
 
 # DateTime tools
 from django.utils.timezone import make_aware as date_make_aware
@@ -38,10 +39,6 @@ JSON_URL = 'http://parltrack.euwiki.org/dumps/ep_votes.json.xz'
 DESTINATION = join('/tmp', 'ep_votes.json')
 
 class Command(BaseCommand):
-    help = 'Import vote data of the European Parliament, \
-    this is needed to be able to create voting recommendations. \
-    If given a file in arg use it instead download it from parltrack'
-
     def handle(self, *args, **options):
         if len(args) == 2:
             start_date = date_parse(args[0])
