@@ -19,7 +19,6 @@ from import_parltrack_votes.models import Matching
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
 
-@transaction.atomic
 def parse_dossier_data(dossier_data, skip_old = True):
     """
     Parse data from parltarck dossier export
@@ -47,28 +46,29 @@ def parse_dossier_data(dossier_data, skip_old = True):
 def parse_vote_data(vote_data, skip_old = True):
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
-    
-    if not dossier_title:
-        # Fail back on parltrack dossier data
-        if dossier_ref:
+
+    if not dossier_ref:
+        proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
+        print('No dossier for proposal %s' % proposal_display)
+        dossier_title = vote_data['title']
+        dossier_ref = vote_data.get('report', '')
+
+    dossier, created = Dossier.objects.get_or_create(
+        reference=dossier_ref
+    )
+    if not created:
+        # Try to find dossier title
+        if not dossier_title:
+            # Fall back on parltrack dossier data
             dossier_title = get_dossier_title(dossier_ref)
             if not dossier_title:
-                print('No dossier title for proposal %s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8')))
+                print('No dossier title for proposal %s' % proposal_display)
                 dossier_title = vote_data['title']
-        else:
-            print('No dossier for proposal %s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8')))
-            dossier_title = vote_data['title']
-            dossier_ref = vote_data.get('report', '')
-                
-    dossier_link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
+        dossier.title = dossier_title
+        dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
+        dossier.save()
     
-    dossier, created = Dossier.objects.get_or_create(
-        title=dossier_title,
-        reference=dossier_ref,
-        link=dossier_link
-    )
-
-    print('Dossier: %s (%s)' % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
+    print("\nDossier: %s (%s)" % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
         proposal_data=vote_data,
@@ -204,7 +204,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         return matching.representative_remote_id
     except Matching.DoesNotExist:
         mep_display = '%s (%s)' % (mep, representative_group.encode('utf-8'))
-        print("WARNING: failed to get mep using internal db, fall back on parltrack"),
+        # print("WARNING: failed to get mep using internal db, fall back on parltrack"),
         print(mep_display)
         url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
         
