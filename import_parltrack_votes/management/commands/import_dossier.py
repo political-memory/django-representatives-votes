@@ -7,7 +7,7 @@ from os.path import join
 from slugify import slugify
 
 from django.core.management.base import BaseCommand
-from import_parltrack.utils import parse_dossier_data
+from import_parltrack_votes.utils import parse_dossier_data
 
 PARLTRACK_URL = 'http://parltrack.euwiki.org/dossier/%s?format=json'
 
