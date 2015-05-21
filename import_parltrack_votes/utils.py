@@ -116,7 +116,7 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
             total_against=int(proposal_data.get('Against', {}).get('total', 0))
         )
     except ValueError:
-        print(u'Can’t import proposal %s' % proposal_data.get('report', ''), file=sys.stderr)
+        print(u'Can’t import proposal %s' % proposal_data.get('report', '').encode('utf-8'), file=sys.stderr)
         return None
 
     print('Proposal: ' + proposal.title.encode('utf-8'))
