@@ -1,7 +1,10 @@
 # coding: utf-8
+from __future__ import print_function
+
 import re
 import json
 import functools
+import sys
 
 from django.db import transaction
 
@@ -93,20 +96,23 @@ def get_dossier_title(dossier_ref):
 
 @transaction.atomic
 def parse_proposal_data(proposal_data, dossier, skip_old = True):
-    """
-    Get or Create a proposal model from raw data,
-    return True if the 
-    """
-    proposal, created = Proposal.objects.get_or_create(
-        dossier=dossier,
-        title=proposal_data['title'],
-        reference=proposal_data.get('report'),
-        datetime=_parse_date(proposal_data['ts']),
-        kind=proposal_data.get('issue_type'),
-        total_for=int(proposal_data.get('For', {}).get('total', 0)),
-        total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
-        total_against=int(proposal_data.get('Against', {}).get('total', 0))
-    )
+    '''Get or Create a proposal model from raw data'''
+
+    # Should remove this test when parltrack is fixed
+    try:
+        proposal, created = Proposal.objects.get_or_create(
+            dossier=dossier,
+            title=proposal_data['title'],
+            reference=proposal_data.get('report'),
+            datetime=_parse_date(proposal_data['ts']),
+            kind=proposal_data.get('issue_type'),
+            total_for=int(proposal_data.get('For', {}).get('total', 0)),
+            total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
+            total_against=int(proposal_data.get('Against', {}).get('total', 0))
+        )
+    except ValueError:
+        print(u'Can’t import proposal %s' % proposal_data.get('report', ''), file=sys.stderr)
+        return None
 
     print('Proposal: ' + proposal.title.encode('utf-8'))
     
@@ -114,7 +120,6 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
         return (proposal, False)
 
     positions = ['For', 'Abstain', 'Against']
-    i = 0
     for position in positions:
         for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
             group_name = group_vote_data['group']
@@ -144,8 +149,6 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                         position=position.lower(),
                         representative_name=representative_name
                     )
-                i += 1
-                print("\r %d" % i),
                 
     return (proposal, True)
 
@@ -205,7 +208,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
     except Matching.DoesNotExist:
         mep_display = '%s (%s)' % (mep, representative_group.encode('utf-8'))
         # print("WARNING: failed to get mep using internal db, fall back on parltrack"),
-        print(mep_display)
+        # print(mep_display)
         url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
         
         json_file = urlopen(url).read()
