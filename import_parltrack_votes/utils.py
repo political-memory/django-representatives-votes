@@ -44,14 +44,18 @@ def parse_dossier_data(dossier_data, skip_old = True):
     Proposal.objects.filter(dossier=dossier).delete()
 
     for proposal_data in dossier_data['votes']:
-        parse_proposal_data(proposal_data, dossier)
+        parse_proposal_data(
+            proposal_data,
+            dossier,
+            skip_old=skip_old
+        )
 
 def parse_vote_data(vote_data, skip_old = True):
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
-
+    proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
+    
     if not dossier_ref:
-        proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
         print('No dossier for proposal %s' % proposal_display)
         dossier_title = vote_data['title']
         dossier_ref = vote_data.get('report', '')
