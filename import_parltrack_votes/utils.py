@@ -59,8 +59,9 @@ def parse_vote_data(vote_data, skip_old = True):
     dossier, created = Dossier.objects.get_or_create(
         reference=dossier_ref
     )
-    if not created:
-        # Try to find dossier title
+    
+    if created:
+        # Try to find dossier title (only for new dossiers)
         if not dossier_title:
             # Fall back on parltrack dossier data
             dossier_title = get_dossier_title(dossier_ref)
