@@ -17,7 +17,6 @@ class NoneMatchingFilter(admin.SimpleListFilter):
 
 
 class MatchingAdmin(admin.ModelAdmin):
-    model = Matching
     list_display = ('mep_name', 'mep_group', 'representative_remote_id')
     list_filter = (NoneMatchingFilter,)
     
