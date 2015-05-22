@@ -133,10 +133,15 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                     representative_name = vote_data['orig']
                 else:
                     representative_name = vote_data
-                
+
+                if not isinstance(representative_name, unicode):
+                    print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
+                    return None
+
                 representative_id = find_matching_representatives_in_db(
                     representative_name, proposal.datetime.date(), group_name
                 )
+
                 if representative_id:
                     Vote.objects.create(
                         proposal=proposal,
@@ -184,7 +189,10 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         )
         
         return [mandate.representative for mandate in mandates]
-    
+
+    if isinstance(mep, dict):
+        print(mep)
+
     mep = mep.replace(u"ß", "SS")
     mep = mep.replace("(The Earl of) ", "")
 
