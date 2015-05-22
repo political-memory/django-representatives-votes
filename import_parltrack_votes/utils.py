@@ -142,22 +142,23 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                     representative_name, proposal.datetime.date(), group_name
                 )
 
+                representative_name_group = '%s (%s)' % (representative_name, group_name)
+                
                 if representative_id:
                     Vote.objects.create(
                         proposal=proposal,
                         representative_remote_id=representative_id,
+                        representative_name=representative_name_group,
                         position=position.lower()
                     )
                 else:
                     # Despite all efforts we can not find a matching
                     # representative in db or parltrack
-                    representative_name = '%s (%s)' % (representative_name, group_name)
-                    
                     Vote.objects.create(
                         proposal=proposal,
                         representative_remote_id=None,
                         position=position.lower(),
-                        representative_name=representative_name
+                        representative_name=representative_name_group
                     )
                 
     return (proposal, True)
@@ -179,6 +180,10 @@ def memoize(obj):
 
 @memoize
 def find_matching_representatives_in_db(mep, vote_date, representative_group):
+    '''
+    Find representative remote id from its name, the vote date and the representative group
+    it uses the internal db, and if we don’t find him we use the parltrack site
+    '''
     # Only select representatives that have a country mandate at the vote date
     def representative_filter(**args):
         mandates = Mandate.objects.select_related('representative').filter(
