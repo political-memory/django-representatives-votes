@@ -6,12 +6,12 @@ import json
 import functools
 import sys
 
-from django.db import transaction
-
 # DateTime tools
 from django.utils.timezone import make_aware as date_make_aware
 from dateutil.parser import parse as date_parse
 from pytz import timezone as date_timezone
+
+from django.db import transaction
 
 from urllib import urlopen
 
@@ -24,7 +24,7 @@ def _parse_date(date_str):
 
 def parse_dossier_data(dossier_data, skip_old = True):
     """
-    Parse data from parltarck dossier export
+    Parse data from parltarck dossier export (1 dossier)
     """
 
     dossier, created = Dossier.objects.get_or_create(
@@ -39,10 +39,10 @@ def parse_dossier_data(dossier_data, skip_old = True):
     dossier.save()
     
     print('Dossier: ' + dossier.title.encode('utf-8'))
-        
+
     Vote.objects.filter(proposal__dossier=dossier).delete()
     Proposal.objects.filter(dossier=dossier).delete()
-
+    
     for proposal_data in dossier_data['votes']:
         parse_proposal_data(
             proposal_data,
@@ -51,6 +51,9 @@ def parse_dossier_data(dossier_data, skip_old = True):
         )
 
 def parse_vote_data(vote_data, skip_old = True):
+    '''
+    Parse data from parltrack votes db dumps (1 proposal)
+    '''
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
     proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
@@ -72,10 +75,11 @@ def parse_vote_data(vote_data, skip_old = True):
             if not dossier_title:
                 print('No dossier title for proposal %s' % proposal_display)
                 dossier_title = vote_data['title']
+
         dossier.title = dossier_title
         dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
         dossier.save()
-    
+
     print("\nDossier: %s (%s)" % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
@@ -84,10 +88,12 @@ def parse_vote_data(vote_data, skip_old = True):
         skip_old=skip_old
     )
 
+
 def get_dossier_title(dossier_ref):
-    """
+    '''
     Fall back on parltrack for dossier data
-    """
+    '''
+
     url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
     json_file = urlopen(url).read()
     try:
@@ -98,6 +104,7 @@ def get_dossier_title(dossier_ref):
         return None
 
     return dossier_json['procedure']['title']
+
 
 @transaction.atomic
 def parse_proposal_data(proposal_data, dossier, skip_old = True):

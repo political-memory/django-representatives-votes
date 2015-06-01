@@ -16,12 +16,13 @@ class Command(BaseCommand):
          - for all matching entry find matching vote
          - for all vote find matching entry
         """
-        matchings = Matching.objects.exclude(representative_remote_id=None)
-        for matching in matchings:
-            mep_name = '%s (%s)' % (matching.mep_name, matching.mep_group)
-            votes = Vote.objects.filter(
-                representative_name=mep_name,
-                representative_remote_id=None
-            )
-            for vote in votes:
-                print(vote)
+        # votes = SELECT * FROM votes WHERE representative_name = CONCAT(matching.mep_name, ' (', matching.mep_group, ')') AND matching_remote_id = None AND representative_remote_id = None
+        votes = Vote.objects.raw('
+        SELECT * FROM
+        "representatives_votes_vote" as vote
+        LEFT JOIN "import_parltrack_votes_matching" as matching
+        ON vote.representative_name = CONCAT(matching.mep_name, " (", matching.mep_group, ")")
+        WHERE matching.representative_remote_id IS NULL AND
+        vote.representative_remote_id IS NOT NULL')
+        
+        print(votes.query)

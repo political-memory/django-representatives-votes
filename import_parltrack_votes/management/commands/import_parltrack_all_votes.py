@@ -32,28 +32,34 @@ from django.utils.timezone import make_aware as date_make_aware
 from dateutil.parser import parse as date_parse
 from pytz import timezone as date_timezone
 
+# Models
+from django.db import connection
+from django.db.utils import OperationalError
+from representatives_votes.models import Dossier
+
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
 
 JSON_URL = 'http://parltrack.euwiki.org/dumps/ep_votes.json.xz'
 DESTINATION = join('/tmp', 'ep_votes.json')
 
+def truncate_model(model):
+    cursor = connection.cursor()
+    try:
+        cursor.execute('TRUNCATE TABLE "{0}"'.format(model._meta.db_table))
+    except OperationalError:
+        cursor.execute('DELETE FROM "{0}"'.format(model._meta.db_table)) 
+
+
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        if len(args) == 2:
-            start_date = date_parse(args[0])
-            end_date = date_parse(args[1])
-            
         json_file = retrieve_xz_json(JSON_URL, DESTINATION)
 
         print "read file", json_file
         print "import proposals"
+        truncate_model(Dossier)
         for vote_data in ijson.items(open(json_file), 'item'):
-            vote_date = date_parse(vote_data['ts'])
-            if len(args) == 2 and vote_date >= start_date and vote_date <= end_date:
-                parse_vote_data(vote_data)
-            elif len(args) != 2:
-                parse_vote_data(vote_data)
+            parse_vote_data(vote_data, False)
 
 
 def retrieve_xz_json(url, destination):
