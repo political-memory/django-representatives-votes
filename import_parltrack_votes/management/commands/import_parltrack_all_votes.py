@@ -35,7 +35,7 @@ from pytz import timezone as date_timezone
 # Models
 from django.db import connection
 from django.db.utils import OperationalError
-from representatives_votes.models import Dossier
+from representatives_votes.models import Dossier, Proposal, Vote
 
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
@@ -46,7 +46,7 @@ DESTINATION = join('/tmp', 'ep_votes.json')
 def truncate_model(model):
     cursor = connection.cursor()
     try:
-        cursor.execute('TRUNCATE TABLE "{0}"'.format(model._meta.db_table))
+        cursor.execute('TRUNCATE TABLE "{0}" CASCADE'.format(model._meta.db_table))
     except OperationalError:
         cursor.execute('DELETE FROM "{0}"'.format(model._meta.db_table)) 
 
@@ -57,6 +57,8 @@ class Command(BaseCommand):
 
         print "read file", json_file
         print "import proposals"
+        truncate_model(Vote)
+        truncate_model(Proposal)
         truncate_model(Dossier)
         for vote_data in ijson.items(open(json_file), 'item'):
             parse_vote_data(vote_data, False)
