@@ -22,17 +22,31 @@ from import_parltrack_votes.models import Matching
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
 
-def parse_dossier_data(dossier_data, skip_old = True):
+def get_dossier_title(dossier_ref):
     """
-    Parse data from parltarck dossier export (1 dossier)
+    Fall back on parltrack for dossier data
+    """
+
+    url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
+    json_file = urlopen(url).read()
+    try:
+        dossier_json = json.loads(json_file)
+    except ValueError:
+        print("⚠ WARNING: failed to get dossier on parltrack !")
+        print('%s' % dossier_ref.encode('utf-8'))
+        return None
+
+    return dossier_json['procedure']['title']
+
+def parse_dossier_data(dossier_data):
+    """Parse data from parltarck dossier export (1 dossier) Update dossier
+    if it existed before, this function goal is to import and update a
+    dossier, not to import all parltrack data
     """
 
     dossier, created = Dossier.objects.get_or_create(
         reference=dossier_data['procedure']['reference'],
     )
-    
-    if skip_old and not created:
-        return
     
     dossier.title = dossier_data['procedure']['title']
     dossier.link = dossier_data['meta']['source']
@@ -40,20 +54,23 @@ def parse_dossier_data(dossier_data, skip_old = True):
     
     print('Dossier: ' + dossier.title.encode('utf-8'))
 
-    Vote.objects.filter(proposal__dossier=dossier).delete()
-    Proposal.objects.filter(dossier=dossier).delete()
-    
+    previous_proposals = set(dossier.proposals.all())
     for proposal_data in dossier_data['votes']:
-        parse_proposal_data(
+        proposal, created = parse_proposal_data(
             proposal_data,
-            dossier,
-            skip_old=skip_old
+            dossier
         )
+        if not created:
+            previous_proposals.remove(proposal)
 
-def parse_vote_data(vote_data, skip_old = True):
-    '''
+    # Delete proposals that dont belongs to this dossier anymore
+    for proposal in previous_proposals:
+        proposal.delete()
+
+def parse_vote_data(vote_data):
+    """
     Parse data from parltrack votes db dumps (1 proposal)
-    '''
+    """
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
     proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
@@ -84,31 +101,12 @@ def parse_vote_data(vote_data, skip_old = True):
 
     return parse_proposal_data(
         proposal_data=vote_data,
-        dossier=dossier,
-        skip_old=skip_old
+        dossier=dossier
     )
 
-
-def get_dossier_title(dossier_ref):
-    '''
-    Fall back on parltrack for dossier data
-    '''
-
-    url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
-    json_file = urlopen(url).read()
-    try:
-        dossier_json = json.loads(json_file)
-    except ValueError:
-        print("⚠ WARNING: failed to get dossier on parltrack !")
-        print('%s' % dossier_ref.encode('utf-8'))
-        return None
-
-    return dossier_json['procedure']['title']
-
-
 @transaction.atomic
-def parse_proposal_data(proposal_data, dossier, skip_old = True):
-    '''Get or Create a proposal model from raw data'''
+def parse_proposal_data(proposal_data, dossier):
+    """Get or Create a proposal model from raw data"""
 
     # Should remove this test when parltrack is fixed
     try:
@@ -127,8 +125,9 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
         return None
 
     print('Proposal: ' + proposal.title.encode('utf-8'))
-    
-    if skip_old and not created:
+
+    # We dont import votes if proposal already exists
+    if not created:
         return (proposal, False)
 
     positions = ['For', 'Abstain', 'Against']
@@ -170,11 +169,10 @@ def parse_proposal_data(proposal_data, dossier, skip_old = True):
                 
     return (proposal, True)
 
-
 def memoize(obj):
-    '''
+    """
     memoize decorator for keeping representative matches in cache
-    '''
+    """
     cache = obj.cache = {}
 
     @functools.wraps(obj)
@@ -187,10 +185,10 @@ def memoize(obj):
 
 @memoize
 def find_matching_representatives_in_db(mep, vote_date, representative_group):
-    '''
+    """
     Find representative remote id from its name, the vote date and the representative group
     it uses the internal db, and if we don’t find him we use the parltrack site
-    '''
+    """
     # Only select representatives that have a country mandate at the vote date
     def representative_filter(**args):
         mandates = Mandate.objects.select_related('representative').filter(

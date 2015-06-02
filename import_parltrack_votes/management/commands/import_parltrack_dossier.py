@@ -27,4 +27,4 @@ class Command(BaseCommand):
         urllib.urlretrieve(parltrack_url, json_dump_localization)
 
         dossier_data = json.load(open(json_dump_localization))
-        parse_dossier_data(dossier_data, False)
+        parse_dossier_data(dossier_data)
