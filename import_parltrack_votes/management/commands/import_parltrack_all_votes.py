@@ -21,7 +21,11 @@
 
 import os
 import ijson
-import urllib
+import pyprind
+
+from urllib import urlopen, urlretrieve
+from lxml import etree
+
 from os.path import join
 
 from django.core.management.base import BaseCommand
@@ -48,8 +52,21 @@ class Command(BaseCommand):
         print "read file", json_file
         print "import proposals"
         Dossier.objects.all().delete()
-        for vote_data in ijson.items(open(json_file), 'item'):
-            parse_vote_data(vote_data, False)
+
+        with open(json_file) as json_data_file:
+            bar = pyprind.ProgBar(get_number_of_votes())
+            for i, vote_data in enumerate(ijson.items(json_data_file, 'item')):
+                proposal, _ = parse_vote_data(vote_data)
+                proposal_id = '{} - {} - {}'.format(i, proposal.dossier.title, proposal.title)
+                bar.update(item_id = proposal_id)
+            print(bar)
+
+def get_number_of_votes():
+    response = urlopen('http://parltrack.euwiki.org/')
+    htmlparser = etree.HTMLParser()
+    tree = etree.parse(response, htmlparser)
+    e = tree.xpath(".//*[@id='stats']/ul/li[3]")[0]
+    return e.text.split(' ')[-1]
 
 
 def retrieve_xz_json(url, destination):
@@ -65,7 +82,7 @@ def retrieve_xz_json(url, destination):
         etag = False
     
     print "download lastest data dump of votes from parltrack"
-    request = urllib.urlopen(url)
+    request = urlopen(url)
     request_etag = request.info()['ETag']
     
     if not etag or not etag == request_etag:
@@ -78,7 +95,7 @@ def retrieve_xz_json(url, destination):
             os.remove(destination)
 
         print "Download vote data from parltrack"
-        urllib.urlretrieve(url, destination + '.xz')
+        urlretrieve(url, destination + '.xz')
 
         with open(destination + '.hash', 'w+') as f:
             f.write(request_etag)

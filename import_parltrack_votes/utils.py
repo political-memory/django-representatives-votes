@@ -32,8 +32,8 @@ def get_dossier_title(dossier_ref):
     try:
         dossier_json = json.loads(json_file)
     except ValueError:
-        print("⚠ WARNING: failed to get dossier on parltrack !")
-        print('%s' % dossier_ref.encode('utf-8'))
+        print("⚠ WARNING: failed to get dossier on parltrack !", file=sys.stderr)
+        print('%s' % dossier_ref.encode('utf-8'), file=sys.stderr)
         return None
 
     return dossier_json['procedure']['title']
@@ -52,7 +52,7 @@ def parse_dossier_data(dossier_data):
     dossier.link = dossier_data['meta']['source']
     dossier.save()
     
-    print('Dossier: ' + dossier.title.encode('utf-8'))
+    # print('Dossier: ' + dossier.title.encode('utf-8'))
 
     previous_proposals = set(dossier.proposals.all())
     for proposal_data in dossier_data['votes']:
@@ -76,7 +76,7 @@ def parse_vote_data(vote_data):
     proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
     
     if not dossier_ref:
-        print('No dossier for proposal %s' % proposal_display)
+        print('No dossier for proposal %s' % proposal_display, file=sys.stderr)
         dossier_title = vote_data['title']
         dossier_ref = vote_data.get('report', '')
 
@@ -90,14 +90,14 @@ def parse_vote_data(vote_data):
             # Fall back on parltrack dossier data
             dossier_title = get_dossier_title(dossier_ref)
             if not dossier_title:
-                print('No dossier title for proposal %s' % proposal_display)
+                print('No dossier title for proposal %s' % proposal_display, file=sys.stderr)
                 dossier_title = vote_data['title']
 
         dossier.title = dossier_title
         dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
         dossier.save()
 
-    print("\nDossier: %s (%s)" % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
+    # print("\nDossier: %s (%s)" % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
         proposal_data=vote_data,
@@ -124,7 +124,7 @@ def parse_proposal_data(proposal_data, dossier):
         print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
         return None
 
-    print('Proposal: ' + proposal.title.encode('utf-8'))
+    # print('Proposal: ' + proposal.title.encode('utf-8'))
 
     # We dont import votes if proposal already exists
     if not created:
@@ -200,9 +200,6 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         
         return [mandate.representative for mandate in mandates]
 
-    if isinstance(mep, dict):
-        print(mep)
-
     mep = mep.replace(u"ß", "SS")
     mep = mep.replace("(The Earl of) ", "")
 
@@ -238,8 +235,8 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         try:
             mep_ep_json = json.loads(json_file)
         except ValueError:
-            print("⚠ WARNING: failed to get mep on parltrack !"),
-            print(mep_display)
+            print("⚠ WARNING: failed to get mep on parltrack !",file=sys.stderr)
+            print(mep_display, file=sys.stderr)
             Matching.objects.create(
                 mep_name=mep,
                 mep_group=representative_group,
