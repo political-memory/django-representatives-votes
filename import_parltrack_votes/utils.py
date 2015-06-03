@@ -106,7 +106,6 @@ def parse_vote_data(vote_data):
 @transaction.atomic
 def parse_proposal_data(proposal_data, dossier):
     """Get or Create a proposal model from raw data"""
-
     # Should remove this test when parltrack is fixed
     try:
         proposal, created = Proposal.objects.get_or_create(

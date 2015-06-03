@@ -47,11 +47,16 @@ DESTINATION = join('/tmp', 'ep_votes.json')
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
+        if len(args) == 1:
+            if args[0] == 'purge':
+                print('Purge dossiers')
+                Dossier.objects.all().delete()
+                
+                
         json_file = retrieve_xz_json(JSON_URL, DESTINATION)
 
         print "read file", json_file
         print "import proposals"
-        Dossier.objects.all().delete()
 
         with open(json_file) as json_data_file:
             bar = pyprind.ProgBar(get_number_of_votes())
