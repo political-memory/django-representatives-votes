@@ -57,7 +57,10 @@ class Command(BaseCommand):
             bar = pyprind.ProgBar(get_number_of_votes())
             for i, vote_data in enumerate(ijson.items(json_data_file, 'item')):
                 proposal, _ = parse_vote_data(vote_data)
-                proposal_id = '{} - {} - {}'.format(i, proposal.dossier.title.encode('utf-8'), proposal.title.encode('utf-8'))
+                if proposal:
+                    proposal_id = '{} - {} - {}'.format(i, proposal.dossier.title.encode('utf-8'), proposal.title.encode('utf-8'))
+                else:
+                    proposal_id = None
                 bar.update(item_id = proposal_id)
             print(bar)
 
