@@ -121,7 +121,7 @@ def parse_proposal_data(proposal_data, dossier):
         )
     except ValueError:
         print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
-        return None
+        return (None, None)
 
     # print('Proposal: ' + proposal.title.encode('utf-8'))
 
@@ -141,7 +141,7 @@ def parse_proposal_data(proposal_data, dossier):
 
                 if not isinstance(representative_name, unicode):
                     print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
-                    return None
+                    return (None, None)
 
                 representative_id = find_matching_representatives_in_db(
                     representative_name, proposal.datetime.date(), group_name
