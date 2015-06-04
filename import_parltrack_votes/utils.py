@@ -141,8 +141,9 @@ def parse_proposal_data(proposal_data, dossier):
             total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
             total_against=int(proposal_data.get('Against', {}).get('total', 0))
         )
-    except ValueError:
+    except ValueError as e:
         logging.warning("Can't import proposal {}".format(proposal_display))
+        logging.warning("I/O error({0}): {1}".format(e.errno, e.strerror))
         return (None, None)
 
     # We dont import votes if proposal already exists
@@ -163,6 +164,7 @@ def parse_proposal_data(proposal_data, dossier):
 
                 if not isinstance(representative_name, unicode):
                     logging.warning("Can't import proposal {}".format(proposal_data.get('report', '').encode('utf-8')))
+                    logging.warning("Representative not a str {}".format(representative_name))
                     return (None, None)
 
                 representative_id = find_matching_representatives_in_db(
@@ -247,7 +249,7 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         matching = Matching.objects.get(mep_name=mep, mep_group=representative_group)
         return matching.representative_remote_id
     except Matching.DoesNotExist:
-        mep_display = "{} ({})".format(mep.encode('utf-8'), representative_group.encode('utf-8'))
+        mep_display = "{} ({})".format(mep.encode('utf-8'), representative_group.encode('utf-8')) 
         logging.info("Looking for mep {} on parltrack".format(mep_display))
         url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
         
