@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import re
 import json
+import functools
 import sys
 
 # DateTime tools
@@ -184,6 +185,21 @@ def parse_proposal_data(proposal_data, dossier):
                     )
     return (proposal, True)
 
+def memoize(obj):
+    """
+    memoize decorator for keeping representative matches in cache
+    """
+    cache = obj.cache = {}
+
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        key = str(args) + str(kwargs)
+        if key not in cache:
+            cache[key] = obj(*args, **kwargs)
+        return cache[key]
+    return memoizer
+
+@memoize
 def find_matching_representatives_in_db(mep, vote_date, representative_group):
     """
     Find representative remote id from its name, the vote date and the representative group
