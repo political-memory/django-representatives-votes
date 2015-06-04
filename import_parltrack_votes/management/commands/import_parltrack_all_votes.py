@@ -20,6 +20,7 @@
 # Copyright (c) 2015 Arnaud Fabre <af@laquadrature.net>
 
 import os
+import logging
 import ijson
 import pyprind
 
@@ -35,6 +36,7 @@ from import_parltrack_votes.utils import parse_vote_data
 from django.utils.timezone import make_aware as date_make_aware
 from dateutil.parser import parse as date_parse
 from pytz import timezone as date_timezone
+from optparse import make_option
 
 from representatives_votes.models import Dossier
 
@@ -46,12 +48,27 @@ DESTINATION = join('/tmp', 'ep_votes.json')
 
 
 class Command(BaseCommand):
+    option_list = BaseCommand.option_list + (
+        make_option('--purge',
+                    action='store_true',
+                    dest='purge',
+                    default=False,
+                    help='Purge dossier before import'),
+        make_option('--log',
+                    action='store',
+                    dest='loglevel',
+                    default='WARNING',
+                    help='Log lever (CRITICAL, ERROR, WARNING, INFO, DEBUG)'),                    
+        )
+    
     def handle(self, *args, **options):
-        if len(args) == 1:
-            if args[0] == 'purge':
-                print('Purge dossiers')
-                Dossier.objects.all().delete()
-                
+        if options['purge']:
+            Dossier.objects.all().delete()
+        
+        numeric_level = getattr(logging, options['loglevel'].upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError('Invalid log level: %s' % options['loglevel'])
+        logging.basicConfig(level=numeric_level)
                 
         json_file = retrieve_xz_json(JSON_URL, DESTINATION)
 

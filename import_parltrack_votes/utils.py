@@ -19,12 +19,11 @@
 # Copyright (C) 2013 Laurent Peuch <cortex@worlddomination.be>
 # Copyright (c) 2015 Arnaud Fabre <af@laquadrature.net>
 
-from __future__ import print_function
+import logging
 
 import re
 import json
 import functools
-import sys
 
 # DateTime tools
 from django.utils.timezone import make_aware as date_make_aware
@@ -43,8 +42,7 @@ def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
 
 def get_dossier_title(dossier_ref):
-    """
-    Fall back on parltrack for dossier data
+    """Fall back on parltrack for dossier data
     """
 
     url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
@@ -52,8 +50,8 @@ def get_dossier_title(dossier_ref):
     try:
         dossier_json = json.loads(json_file)
     except ValueError:
-        print("⚠ WARNING: failed to get dossier on parltrack !", file=sys.stderr)
-        print('%s' % dossier_ref.encode('utf-8'), file=sys.stderr)
+        logging.warning("Failed to get dossier on parltrack !")
+        logging.warning('{}'.format(dossier_ref.encode('utf-8')))
         return None
 
     return dossier_json['procedure']['title']
@@ -71,8 +69,8 @@ def parse_dossier_data(dossier_data):
     dossier.title = dossier_data['procedure']['title']
     dossier.link = dossier_data['meta']['source']
     dossier.save()
-    
-    # print('Dossier: ' + dossier.title.encode('utf-8'))
+
+    logging.info('Dossier: ' + dossier.title.encode('utf-8'))
 
     previous_proposals = set(dossier.proposals.all())
     for proposal_data in dossier_data['votes']:
@@ -93,10 +91,10 @@ def parse_vote_data(vote_data):
     """
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
-    proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
+    proposal_display = '{} ({})'.format(vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
 
     if not dossier_ref:
-        print('No dossier for proposal %s' % proposal_display, file=sys.stderr)
+        logging.warning('No dossier for proposal {}'.format(proposal_display))
         dossier_title = vote_data['title']
         dossier_ref = vote_data.get('report', '')
 
@@ -110,14 +108,15 @@ def parse_vote_data(vote_data):
             # Fall back on parltrack dossier data
             dossier_title = get_dossier_title(dossier_ref)
             if not dossier_title:
-                print('No dossier title for proposal %s' % proposal_display, file=sys.stderr)
+                logging.warning('No dossier title for proposal {}'.format(proposal_display))
                 dossier_title = vote_data['title']
 
         dossier.title = dossier_title
         dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
         dossier.save()
 
-    # print("\nDossier: %s (%s)" % (dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
+    logging.info("\nParsing proposal {}".format(proposal_display))
+    logging.info("For dossier {} ({})".format(dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
         proposal_data=vote_data,
@@ -127,6 +126,9 @@ def parse_vote_data(vote_data):
 @transaction.atomic
 def parse_proposal_data(proposal_data, dossier):
     """Get or Create a proposal model from raw data"""
+
+    proposal_display = '{} ({})'.format(proposal_data['title'].encode('utf-8'), proposal_data.get('report', '').encode('utf-8'))
+
     # Should remove this test when parltrack is fixed
     try:
         proposal, created = Proposal.objects.get_or_create(
@@ -140,14 +142,16 @@ def parse_proposal_data(proposal_data, dossier):
             total_against=int(proposal_data.get('Against', {}).get('total', 0))
         )
     except ValueError:
-        print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
+        logging.warning("Can't import proposal {}".format(proposal_display))
         return (None, None)
 
     # We dont import votes if proposal already exists
     if not created:
+        logging.info('Return existing proposal {}'.format(proposal_display))
         return (proposal, False)
 
     positions = ['For', 'Abstain', 'Against']
+    logging.info('Looking for votes in proposal {}'.format(proposal_display))
     for position in positions:
         for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
             group_name = group_vote_data['group']
@@ -158,14 +162,14 @@ def parse_proposal_data(proposal_data, dossier):
                     representative_name = vote_data
 
                 if not isinstance(representative_name, unicode):
-                    print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
+                    logging.warning("Can't import proposal {}".format(proposal_data.get('report', '').encode('utf-8')))
                     return (None, None)
 
                 representative_id = find_matching_representatives_in_db(
                     representative_name, proposal.datetime.date(), group_name
                 )
 
-                representative_name_group = '%s (%s)' % (representative_name, group_name)
+                representative_name_group = '{} ({})'.format(representative_name.encode('utf-8'), group_name.encode('utf-8'))
                 
                 if representative_id:
                     Vote.objects.create(
@@ -183,6 +187,7 @@ def parse_proposal_data(proposal_data, dossier):
                         position=position.lower(),
                         representative_name=representative_name_group
                     )
+
     return (proposal, True)
 
 def memoize(obj):
@@ -242,17 +247,15 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         matching = Matching.objects.get(mep_name=mep, mep_group=representative_group)
         return matching.representative_remote_id
     except Matching.DoesNotExist:
-        mep_display = '%s (%s)' % (mep, representative_group.encode('utf-8'))
-        # print("WARNING: failed to get mep using internal db, fall back on parltrack"),
-        # print(mep_display)
+        mep_display = "{} ({})".format(mep.encode('utf-8'), representative_group.encode('utf-8'))
+        logging.info("Looking for mep {} on parltrack".format(mep_display))
         url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
         
         json_file = urlopen(url).read()
         try:
             mep_ep_json = json.loads(json_file)
         except ValueError:
-            print("⚠ WARNING: failed to get mep on parltrack !",file=sys.stderr)
-            print(mep_display, file=sys.stderr)
+            logging.warning("Failed to get mep on parltrack : {}".format(mep_display))
             Matching.objects.create(
                 mep_name=mep,
                 mep_group=representative_group,
