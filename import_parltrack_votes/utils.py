@@ -1,4 +1,24 @@
 # coding: utf-8
+
+# This file is part of django-parltrack-votes.
+#
+# django-parltrack-votes-data is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of
+# the License, or any later version.
+#
+# django-parltrack-votes-data is distributed in the hope that it will
+# be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU General Affero Public
+# License along with django-parltrack-votes.
+# If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2013 Laurent Peuch <cortex@worlddomination.be>
+# Copyright (c) 2015 Arnaud Fabre <af@laquadrature.net>
+
 from __future__ import print_function
 
 import re
@@ -73,7 +93,7 @@ def parse_vote_data(vote_data):
     dossier_ref = vote_data.get('epref', '')
     dossier_title = vote_data.get('eptitle', '')
     proposal_display = '%s (%s)' % (vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
-    
+
     if not dossier_ref:
         print('No dossier for proposal %s' % proposal_display, file=sys.stderr)
         dossier_title = vote_data['title']
@@ -122,8 +142,6 @@ def parse_proposal_data(proposal_data, dossier):
         print("Can't import proposal %s" % (proposal_data.get('report', '').encode('utf-8')), file=sys.stderr)
         return (None, None)
 
-    # print('Proposal: ' + proposal.title.encode('utf-8'))
-
     # We dont import votes if proposal already exists
     if not created:
         return (proposal, False)
@@ -164,7 +182,6 @@ def parse_proposal_data(proposal_data, dossier):
                         position=position.lower(),
                         representative_name=representative_name_group
                     )
-                
     return (proposal, True)
 
 def find_matching_representatives_in_db(mep, vote_date, representative_group):
