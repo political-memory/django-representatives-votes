@@ -143,7 +143,7 @@ def parse_proposal_data(proposal_data, dossier):
         )
     except ValueError as e:
         logging.warning("Can't import proposal {}".format(proposal_display))
-        logging.warning("I/O error({0}): {1}".format(e.errno, e.strerror))
+        logging.warning("ValueError error({})".format(e))
         return (None, None)
 
     # We dont import votes if proposal already exists
