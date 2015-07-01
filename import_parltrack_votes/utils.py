@@ -19,11 +19,10 @@
 # Copyright (C) 2013 Laurent Peuch <cortex@worlddomination.be>
 # Copyright (c) 2015 Arnaud Fabre <af@laquadrature.net>
 
-import logging
-
 import re
 import json
 import functools
+import logging
 
 # DateTime tools
 from django.utils.timezone import make_aware as date_make_aware
@@ -31,6 +30,7 @@ from dateutil.parser import parse as date_parse
 from pytz import timezone as date_timezone
 
 from django.db import transaction
+from django.utils.encoding import smart_str
 
 from urllib import urlopen
 
@@ -38,13 +38,15 @@ from representatives.models import Mandate
 from representatives_votes.models import Dossier, Proposal, Vote
 from import_parltrack_votes.models import Matching
 
+logger = logging.getLogger(__name__)
+
 def _parse_date(date_str):
     return date_make_aware(date_parse(date_str), date_timezone('Europe/Brussels'))
 
 def get_dossier_title(dossier_ref):
     """Fall back on parltrack for dossier data
     """
-
+    logger.debug('Get dossier title from parltrack')
     url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
     json_file = urlopen(url).read()
     try:
@@ -61,7 +63,7 @@ def parse_dossier_data(dossier_data):
     if it existed before, this function goal is to import and update a
     dossier, not to import all parltrack data
     """
-
+    
     dossier, created = Dossier.objects.get_or_create(
         reference=dossier_data['procedure']['reference'],
     )
@@ -70,7 +72,7 @@ def parse_dossier_data(dossier_data):
     dossier.link = dossier_data['meta']['source']
     dossier.save()
 
-    logging.info('Dossier: ' + dossier.title.encode('utf-8'))
+    logger.info('Dossier: ' + dossier.title.encode('utf-8'))
 
     previous_proposals = set(dossier.proposals.all())
     for proposal_data in dossier_data['votes']:
@@ -94,7 +96,7 @@ def parse_vote_data(vote_data):
     proposal_display = '{} ({})'.format(vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
 
     if not dossier_ref:
-        logging.warning('No dossier for proposal {}'.format(proposal_display))
+        logger.warning('No dossier for proposal {}'.format(proposal_display))
         dossier_title = vote_data['title']
         dossier_ref = vote_data.get('report', '')
 
@@ -108,15 +110,15 @@ def parse_vote_data(vote_data):
             # Fall back on parltrack dossier data
             dossier_title = get_dossier_title(dossier_ref)
             if not dossier_title:
-                logging.warning('No dossier title for proposal {}'.format(proposal_display))
+                logger.warning('No dossier title for proposal {}'.format(proposal_display))
                 dossier_title = vote_data['title']
 
         dossier.title = dossier_title
         dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
         dossier.save()
 
-    logging.info("\nParsing proposal {}".format(proposal_display))
-    logging.info("For dossier {} ({})".format(dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
+    logger.info("\nParsing proposal {}".format(proposal_display))
+    logger.info("For dossier {} ({})".format(dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
 
     return parse_proposal_data(
         proposal_data=vote_data,
@@ -142,17 +144,17 @@ def parse_proposal_data(proposal_data, dossier):
             total_against=int(proposal_data.get('Against', {}).get('total', 0))
         )
     except ValueError as e:
-        logging.warning("Can't import proposal {}".format(proposal_display))
-        logging.warning("ValueError error({})".format(e))
+        logger.warning("Can't import proposal {}".format(proposal_display))
+        logger.warning("ValueError error({})".format(e))
         return (None, None)
 
     # We dont import votes if proposal already exists
     if not created:
-        logging.info('Return existing proposal {}'.format(proposal_display))
+        logger.info('Return existing proposal {}'.format(proposal_display))
         return (proposal, False)
 
     positions = ['For', 'Abstain', 'Against']
-    logging.info('Looking for votes in proposal {}'.format(proposal_display))
+    logger.info('Looking for votes in proposal {}'.format(proposal_display))
     for position in positions:
         for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
             group_name = group_vote_data['group']
@@ -163,8 +165,8 @@ def parse_proposal_data(proposal_data, dossier):
                     representative_name = vote_data
 
                 if not isinstance(representative_name, unicode):
-                    logging.warning("Can't import proposal {}".format(proposal_data.get('report', '').encode('utf-8')))
-                    logging.warning("Representative not a str {}".format(representative_name))
+                    logger.warning("Can't import proposal {}".format(proposal_data.get('report', '').encode('utf-8')))
+                    logger.warning("Representative not a str {}".format(representative_name))
                     return (None, None)
 
                 representative_id = find_matching_representatives_in_db(
@@ -249,15 +251,15 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
         matching = Matching.objects.get(mep_name=mep, mep_group=representative_group)
         return matching.representative_remote_id
     except Matching.DoesNotExist:
-        mep_display = "{} ({})".format(mep.encode('utf-8'), representative_group.encode('utf-8')) 
-        logging.info("Looking for mep {} on parltrack".format(mep_display))
+        mep_display = "{} ({})".format(smart_str(mep), smart_str(representative_group))
+        logger.info("Looking for mep {} on parltrack".format(mep_display))
         url = 'http://parltrack.euwiki.org/mep/%s?format=json' % mep
         
         json_file = urlopen(url).read()
         try:
             mep_ep_json = json.loads(json_file)
         except ValueError:
-            logging.warning("Failed to get mep on parltrack : {}".format(mep_display))
+            logger.warning("Failed to get mep on parltrack : {}".format(mep_display))
             Matching.objects.create(
                 mep_name=mep,
                 mep_group=representative_group,

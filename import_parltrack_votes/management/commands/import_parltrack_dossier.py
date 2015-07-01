@@ -9,7 +9,7 @@ from slugify import slugify
 from django.core.management.base import BaseCommand
 from import_parltrack_votes.utils import parse_dossier_data
 
-PARLTRACK_URL = 'http://parltrack.euwiki.org/dossier/%s?format=json'
+PARLTRACK_URL = 'http://parltrack.euwiki.org/dossier/{}?format=json'
 
 class Command(BaseCommand):
     """
@@ -17,14 +17,17 @@ class Command(BaseCommand):
     representatives_votes model format
     """
 
+    def add_arguments(self, parser):
+        # parser.add_argument('--celery', action='store_true', default=False)
+        parser.add_argument('dossier_id')
+
     def handle(self, *args, **options):
-        dossier_id = unicode(args[0])        
-        parltrack_url = PARLTRACK_URL % dossier_id
+        dossier_id = unicode(options['dossier_id'])
+        parltrack_url = PARLTRACK_URL.format(dossier_id)
 
-        json_dump_localization = join("/tmp", "dossier_%s.json" % slugify(dossier_id))
+        json_dump_localization = join("/tmp", "dossier_{}.json".format(slugify(dossier_id)))
         # print json_dump_localization
-
+        
         urllib.urlretrieve(parltrack_url, json_dump_localization)
-
         dossier_data = json.load(open(json_dump_localization))
         parse_dossier_data(dossier_data)
