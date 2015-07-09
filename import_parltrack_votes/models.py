@@ -4,7 +4,9 @@
 
 from django.db import models
 
+from representatives.models import Representative
+
 class Matching(models.Model):
-    representative_remote_id = models.CharField(max_length=200, null=True)
+    representative = models.ForeignKey(Representative, null=True)
     mep_name = models.CharField(max_length=200)
     mep_group = models.CharField(max_length=200)

@@ -34,7 +34,7 @@ from django.utils.encoding import smart_str
 
 from urllib import urlopen
 
-from representatives.models import Mandate
+from representatives.models import Mandate, Representative
 from representatives_votes.models import Dossier, Proposal, Vote
 from import_parltrack_votes.models import Matching
 
@@ -74,18 +74,18 @@ def parse_dossier_data(dossier_data):
 
     logger.info('Dossier: ' + dossier.title.encode('utf-8'))
 
-    previous_proposals = set(dossier.proposals.all())
+    # previous_proposals = set(dossier.proposals.all())
     for proposal_data in dossier_data['votes']:
         proposal, created = parse_proposal_data(
             proposal_data,
             dossier
         )
-        if not created:
-            previous_proposals.remove(proposal)
+        # if not created:
+            # previous_proposals.remove(proposal)
 
     # Delete proposals that dont belongs to this dossier anymore
-    for proposal in previous_proposals:
-        proposal.delete()
+    # for proposal in previous_proposals:
+        # proposal.delete()
 
 def parse_vote_data(vote_data):
     """
@@ -161,6 +161,8 @@ def parse_proposal_data(proposal_data, dossier):
             for vote_data in group_vote_data['votes']:
                 if 'orig' in vote_data:
                     representative_name = vote_data['orig']
+                elif 'name' in vote_data:
+                    representative_name = vote_data['name']
                 else:
                     representative_name = vote_data
 
@@ -169,16 +171,16 @@ def parse_proposal_data(proposal_data, dossier):
                     logger.warning("Representative not a str {}".format(representative_name))
                     return (None, None)
 
-                representative_id = find_matching_representatives_in_db(
+                representative = find_matching_representatives_in_db(
                     representative_name, proposal.datetime.date(), group_name
                 )
 
                 representative_name_group = '{} ({})'.format(representative_name.encode('utf-8'), group_name.encode('utf-8'))
                 
-                if representative_id:
+                if representative:
                     Vote.objects.create(
                         proposal=proposal,
-                        representative_remote_id=representative_id,
+                        representative=representative,
                         representative_name=representative_name_group,
                         position=position.lower()
                     )
@@ -187,9 +189,9 @@ def parse_proposal_data(proposal_data, dossier):
                     # representative in db or parltrack
                     Vote.objects.create(
                         proposal=proposal,
-                        representative_remote_id=None,
-                        position=position.lower(),
-                        representative_name=representative_name_group
+                        representative=None,
+                        representative_name=representative_name_group,
+                        position=position.lower()
                     )
 
     return (proposal, True)
@@ -243,13 +245,13 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
     if representative:
         # TODO Ugly hack, we should handle cases where there are multiple results
         representative = representative[0]
-        return representative.remote_id
+        return representative
 
     try:
         mep = mep.encode('utf-8')
         # Try by searching in the Matching table, avoid many conexions to parltrack
         matching = Matching.objects.get(mep_name=mep, mep_group=representative_group)
-        return matching.representative_remote_id
+        return matching.representative
     except Matching.DoesNotExist:
         mep_display = "{} ({})".format(smart_str(mep), smart_str(representative_group))
         logger.info("Looking for mep {} on parltrack".format(mep_display))
@@ -263,15 +265,17 @@ def find_matching_representatives_in_db(mep, vote_date, representative_group):
             Matching.objects.create(
                 mep_name=mep,
                 mep_group=representative_group,
-                representative_remote_id=None
             )
             return None
 
         mep_remote_id = mep_ep_json['UserID']
+        representative = Representative.objects.get(
+            remote_id=mep_remote_id
+        )
         
         Matching.objects.create(
             mep_name=mep,
             mep_group=representative_group,
-            representative_remote_id=mep_remote_id
+            representative=representative
         )
-        return mep_remote_id
+        return representative
