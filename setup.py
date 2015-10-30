@@ -7,7 +7,7 @@ setup(
     description='Base app for importing parltrack votes',
     author='Arnaud Fabre',
     author_email='webmaster@memopol.org',
-    url='http://github.com/political-memory/toutatis-import_parltrack',
+    url='https://github.com/political-memory/import-parltrack-votes.git'
     packages=find_packages(),
     include_package_data=True,
     license='GPLv3',
