@@ -16,6 +16,7 @@ setup(
         'pyprind',
         'lxml',
         'py-dateutil',
+        'slugify',
     ],
     classifiers=[
         'Development Status :: 1 - Alpha/Planning',
