@@ -7,11 +7,16 @@ setup(
     description='Base app for importing parltrack votes',
     author='Arnaud Fabre',
     author_email='webmaster@memopol.org',
-    url='https://github.com/political-memory/import-parltrack-votes.git'
+    url='https://github.com/political-memory/import-parltrack-votes.git',
     packages=find_packages(),
     include_package_data=True,
     license='GPLv3',
     keywords='django government parliament',
+    install_requires=[
+        'pyprind',
+        'lxml',
+        'py-dateutil',
+    ],
     classifiers=[
         'Development Status :: 1 - Alpha/Planning',
         'Environment :: Web Environment',
