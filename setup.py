@@ -17,6 +17,7 @@ setup(
         'lxml',
         'py-dateutil',
         'slugify',
+        'pytz',
     ],
     classifiers=[
         'Development Status :: 1 - Alpha/Planning',
