@@ -143,9 +143,9 @@ def parse_proposal_data(proposal_data, dossier):
             total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
             total_against=int(proposal_data.get('Against', {}).get('total', 0))
         )
-    except ValueError as e:
+    except Exception as e:
         logger.warning("Can't import proposal {}".format(proposal_display))
-        logger.warning("ValueError error({})".format(e))
+        logger.warning("Exception({})".format(e))
         return (None, None)
 
     # We dont import votes if proposal already exists
