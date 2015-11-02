@@ -1,5 +1,0 @@
-django>=1.8,<1.9
--e git+https://github.com/political-memory/import-parltrack-votes.git#egg=import-parltrack-votes
--e git+https://github.com/political-memory/import-parltrack-representatives.git#egg=import-parltrack-representatives
--e git+https://github.com/political-memory/django-representatives.git#egg=django-representatives
--e git+https://github.com/political-memory/django-representatives-votes.git#egg=django-representatives-votes
