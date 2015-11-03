@@ -1,10 +1,16 @@
 sudo: false
 language: python
+branches:
+  only:
+    - master
 python:
   - "2.7"
 install:
   - pip install django
-  - pip install -e git+https://github.com/political-memory/django-representatives.git#egg=representatives
+  - pip install -e git+https://github.com/political-memory/django-representatives.git@parltrack_in_representatives#egg=representatives
   - pip install -e .
+  - wget https://github.com/political-memory/political_memory/archive/openshift.tar.gz
+  - tar xvzf openshift.tar.gz
+  - pip install -r political_memory-openshift/requirements.txt
 script:
   - test_project/manage.py migrate
