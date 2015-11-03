@@ -13,4 +13,5 @@ install:
   - tar xvzf openshift.tar.gz
   - pip install -r political_memory-openshift/requirements.txt
 script:
-  - test_project/manage.py migrate
+  - political_memory-openshift/manage.py migrate
+  - political_memory-openshift/manage.py import_parltrack_all_votes
