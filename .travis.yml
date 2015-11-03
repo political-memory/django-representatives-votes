@@ -12,6 +12,7 @@ install:
   - wget https://github.com/political-memory/political_memory/archive/openshift.tar.gz
   - tar xvzf openshift.tar.gz
   - pip install -r political_memory-openshift/requirements.txt
+  - mv test.db political_memory-openshift/db.sqlite
 script:
   - political_memory-openshift/manage.py migrate
   - political_memory-openshift/manage.py import_parltrack_all_votes
