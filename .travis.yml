@@ -1,5 +1,7 @@
 sudo: false
 language: python
+env:
+  - DEBUG=True
 branches:
   only:
     - master
