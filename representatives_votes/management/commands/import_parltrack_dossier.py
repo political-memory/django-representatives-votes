@@ -11,6 +11,35 @@ from import_parltrack_votes.utils import parse_dossier_data
 
 PARLTRACK_URL = 'http://parltrack.euwiki.org/dossier/{}?format=json'
 
+def parse_dossier_data(dossier_data):
+    """Parse data from parltarck dossier export (1 dossier) Update dossier
+    if it existed before, this function goal is to import and update a
+    dossier, not to import all parltrack data
+    """
+
+    dossier, created = Dossier.objects.get_or_create(
+        reference=dossier_data['procedure']['reference'],
+    )
+
+    dossier.title = dossier_data['procedure']['title']
+    dossier.link = dossier_data['meta']['source']
+    dossier.save()
+
+    logger.info('Dossier: ' + dossier.title.encode('utf-8'))
+
+    # previous_proposals = set(dossier.proposals.all())
+    for proposal_data in dossier_data['votes']:
+        proposal, created = parse_proposal_data(
+            proposal_data,
+            dossier
+        )
+        # if not created:
+            # previous_proposals.remove(proposal)
+
+    # Delete proposals that dont belongs to this dossier anymore
+    # for proposal in previous_proposals:
+        # proposal.delete()
+
 class Command(BaseCommand):
     """
     Import a Dossier from parltrack and save it in the
@@ -27,7 +56,7 @@ class Command(BaseCommand):
 
         json_dump_localization = join("/tmp", "dossier_{}.json".format(slugify(dossier_id)))
         # print json_dump_localization
-        
+
         urllib.urlretrieve(parltrack_url, json_dump_localization)
         dossier_data = json.load(open(json_dump_localization))
         parse_dossier_data(dossier_data)
