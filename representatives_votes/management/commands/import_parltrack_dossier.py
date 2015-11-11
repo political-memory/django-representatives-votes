@@ -2,43 +2,49 @@
 
 import urllib
 import json
+import logging
 
 from os.path import join
 from slugify import slugify
 
 from django.core.management.base import BaseCommand
+
+from representatives_votes.models import Dossier
 from import_parltrack_votes.utils import parse_dossier_data
 
 PARLTRACK_URL = 'http://parltrack.euwiki.org/dossier/{}?format=json'
 
-def parse_dossier_data(dossier_data):
+logger = logging.getLogger(__name__)
+
+
+def parse_dossier_data(data):
     """Parse data from parltarck dossier export (1 dossier) Update dossier
     if it existed before, this function goal is to import and update a
     dossier, not to import all parltrack data
     """
+    changed = False
 
-    dossier, created = Dossier.objects.get_or_create(
-        reference=dossier_data['procedure']['reference'],
-    )
+    try:
+        dossier = Dossier.objects.get(remote_id=data['_id'])
+    except Dossier.DoesNotExist:
+        dossier = Dossier(remote_id=data['_id'])
+        changed = True
 
-    dossier.title = dossier_data['procedure']['title']
-    dossier.link = dossier_data['meta']['source']
-    dossier.save()
+    if dossier.reference != data['procedure']['reference']:
+        dossier.reference = data['procedure']['reference']
+        changed = True
 
-    logger.info('Dossier: ' + dossier.title.encode('utf-8'))
+    if dossier.title != data['procedure']['title']:
+        dossier.title = data['procedure']['title']
+        changed = True
 
-    # previous_proposals = set(dossier.proposals.all())
-    for proposal_data in dossier_data['votes']:
-        proposal, created = parse_proposal_data(
-            proposal_data,
-            dossier
-        )
-        # if not created:
-            # previous_proposals.remove(proposal)
+    if dossier.link != data['meta']['source']:
+        dossier.link = data['meta']['source']
+        changed = True
 
-    # Delete proposals that dont belongs to this dossier anymore
-    # for proposal in previous_proposals:
-        # proposal.delete()
+    if changed:
+        dossier.save()
+
 
 class Command(BaseCommand):
     """

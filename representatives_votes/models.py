@@ -26,9 +26,10 @@ class Dossier(HashableModel, TimeStampedModel):
     reference = models.CharField(max_length=200)
     text = models.TextField(blank=True, default='')
     link = models.URLField()
+    remote_id = models.CharField(max_length=255, unique=True)
 
-    hashable_fields = ['title', 'reference']
-    
+    hashable_fields = ['title', 'reference', 'remote_id']
+
     def __unicode__(self):
         return unicode(self.title)
 
@@ -47,22 +48,22 @@ class Proposal(HashableModel, TimeStampedModel):
     representatives = models.ManyToManyField(
         Representative, through='Vote', related_name='proposals'
     )
-    
+
     hashable_fields = ['dossier', 'title', 'reference',
                        'kind', 'total_abstain', 'total_against',
                        'total_for']
 
     class Meta:
         ordering = ['datetime']
-        
-        
+
+
     @property
     def status(self):
         if self.total_for > self.total_against:
             return 'adopted'
         else:
             return 'rejected'
-        
+
     def __unicode__(self):
         return unicode(self.title)
 
@@ -75,7 +76,7 @@ class Vote(models.Model):
     )
 
     proposal = models.ForeignKey(Proposal, related_name='votes')
-    
+
     representative = models.ForeignKey(Representative, related_name='votes', null=True)
     # Save representative name in case of we don't find the representative
     representative_name = models.CharField(max_length=200, blank=True)
