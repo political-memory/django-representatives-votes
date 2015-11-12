@@ -7,14 +7,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('representatives_votes', '0004_auto_20150709_0819'),
+        ('representatives_votes', '0004_auto_20150709_0819.py')
     ]
 
     operations = [
-        migrations.AddField(
+        migrations.AlterField(
             model_name='dossier',
-            name='remote_id',
-            field=models.CharField(default='', unique=True, max_length=255),
-            preserve_default=False,
+            name='reference',
+            field=models.CharField(unique=True, max_length=200),
         ),
     ]

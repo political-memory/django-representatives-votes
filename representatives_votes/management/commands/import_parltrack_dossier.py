@@ -25,13 +25,10 @@ def parse_dossier_data(data):
     changed = False
 
     try:
-        dossier = Dossier.objects.get(remote_id=data['_id'])
+        dossier = Dossier.objects.get(
+                reference=data['procedure']['reference'])
     except Dossier.DoesNotExist:
-        dossier = Dossier(remote_id=data['_id'])
-        changed = True
-
-    if dossier.reference != data['procedure']['reference']:
-        dossier.reference = data['procedure']['reference']
+        dossier = Dossier(reference=data['procedure']['reference'])
         changed = True
 
     if dossier.title != data['procedure']['title']:

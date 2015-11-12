@@ -41,6 +41,8 @@ from django.conf import settings
 from django.utils.encoding import smart_str
 from django.db import transaction
 
+from representatives.management.parltrack import retrieve_xz_json
+
 # DateTime tools
 from django.utils.timezone import make_aware as date_make_aware
 from dateutil.parser import parse as date_parse
@@ -99,6 +101,9 @@ class Command(BaseCommand):
             with open(self.cache_path, 'r') as f:
                 self.cache = pickle.load(f)
 
+        self.index_representatives()
+        self.index_dossiers()
+
         print "import proposals"
 
         try:
@@ -107,7 +112,9 @@ class Command(BaseCommand):
                 for i, vote_data in enumerate(ijson.items(json_data_file, 'item')):
                     if options['continue'] and i < self.cache.get('vote_data_number', 0):
                         continue
-                    proposal, _ = self.parse_vote_data(vote_data)
+
+                    proposal = self.parse_vote_data(vote_data)
+
                     if proposal:
                         proposal_id = '{} - {} - {}'.format(i, proposal.dossier.title.encode('utf-8'), proposal.title.encode('utf-8'))
                     else:
@@ -129,190 +136,131 @@ class Command(BaseCommand):
         """
         Parse data from parltrack votes db dumps (1 proposal)
         """
-        dossier_ref = vote_data.get('epref', '')
-        dossier_title = vote_data.get('eptitle', '')
-        proposal_display = '{} ({})'.format(vote_data['title'].encode('utf-8'), vote_data.get('report', '').encode('utf-8'))
+        if 'dossierid' not in vote_data:
+            logger.error('Could not import data %s', vote_data)
+            return
 
-        if not dossier_ref:
-            logger.warning('No dossier for proposal {}'.format(proposal_display))
-            dossier_title = vote_data['title']
-            dossier_ref = vote_data.get('report', '')
+        dossier_pk = self.get_dossier(vote_data['dossierid'])
 
-        dossier, created = Dossier.objects.get_or_create(
-            reference=dossier_ref
-        )
-
-        if created:
-            # Try to find dossier title (only for new dossiers)
-            if not dossier_title:
-                # Fall back on parltrack dossier data
-                dossier_title = self.get_dossier_title(dossier_ref)
-                if not dossier_title:
-                    logger.warning('No dossier title for proposal {}'.format(proposal_display))
-                    dossier_title = vote_data['title']
-
-            dossier.title = dossier_title
-            dossier.link = 'http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=%s' % dossier_ref
-            dossier.save()
-
-        logger.info("\nParsing proposal {}".format(proposal_display))
-        logger.info("For dossier {} ({})".format(dossier.title.encode('utf-8'), dossier_ref.encode('utf-8')))
+        if not dossier_pk:
+            logger.info('Cannot find dossier with remote id %s',
+                    vote_data['dossierid'])
+            return
 
         return self.parse_proposal_data(
             proposal_data=vote_data,
-            dossier=dossier
+            dossier_pk=dossier_pk
         )
 
     @transaction.atomic
-    def parse_proposal_data(self, proposal_data, dossier):
+    def parse_proposal_data(self, proposal_data, dossier_pk):
         """Get or Create a proposal model from raw data"""
         proposal_display = '{} ({})'.format(proposal_data['title'].encode('utf-8'), proposal_data.get('report', '').encode('utf-8'))
 
-        # Should remove this test when parltrack is fixed
+        changed = False
         try:
-            proposal, created = Proposal.objects.get_or_create(
-                dossier=dossier,
-                title=proposal_data['title'],
-                reference=proposal_data.get('report'),
-                datetime=_parse_date(proposal_data['ts']),
-                kind=proposal_data.get('issue_type'),
-                total_for=int(proposal_data.get('For', {}).get('total', 0)),
-                total_abstain=int(proposal_data.get('Abstain', {}).get('total', 0)),
-                total_against=int(proposal_data.get('Against', {}).get('total', 0))
-            )
-        except Exception as e:
-            logger.warning("Can't import proposal {}".format(proposal_display))
-            logger.warning("Exception({})".format(e))
-            return (None, None)
-        else:
-            logger.debug("Proposal successfuly imported")
+            proposal = Proposal.objects.get(dossier_id=dossier_pk,
+                    reference=proposal_data.get('report'),
+                    kind=proposal_data.get('issue_type'))
+        except Proposal.DoesNotExist:
+            proposal = Proposal(dossier_id=dossier_pk,
+                    reference=proposal_data.get('report'),
+                    kind=proposal_data.get('issue_type'))
+            changed = True
 
-        # We dont import votes if proposal already exists
-        if not created:
-            logger.info('Return existing proposal {}'.format(proposal_display))
-            return (proposal, False)
+        data_map = dict(
+            title=proposal_data['title'],
+            datetime=_parse_date(proposal_data['ts']),
+        )
+
+        for position in ('For', 'Abstain', 'Against'):
+            position_data = proposal_data.get(position, {})
+            position_total = position_data.get('total', 0)
+
+            try:
+                position_total = int(position_total)
+            except ValueError:
+                position_total = 0
+
+
+            data_map['total_%s' % position.lower()] = position_total
+
+        for key, value in data_map.items():
+            if value != getattr(proposal, key, None):
+                setattr(proposal, key, value)
+                changed = True
+
+        votes = proposal.votes.all() if proposal.pk else []
+
+        if changed:
+            proposal.save()
 
         positions = ['For', 'Abstain', 'Against']
         logger.info('Looking for votes in proposal {}'.format(proposal_display))
+        import ipdb; ipdb.set_trace()
         for position in positions:
             for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
                 group_name = group_vote_data['group']
                 for vote_data in group_vote_data['votes']:
-                    if 'orig' in vote_data:
+                    if not isinstance(vote_data, dict):
+                        logger.error('Skipping vote data %s for proposal %s',
+                                vote_data, proposal_data['_id'])
+                        continue
+
+                    try:
+                        representative_pk = self.get_representative(
+                                vote_data['id'])
                         representative_name = vote_data['orig']
-                    elif 'name' in vote_data:
-                        representative_name = vote_data['name']
-                    else:
-                        representative_name = vote_data
+                    except KeyError:
+                        logger.error('Skipping vote data %s for proposal %s',
+                                vote_data, proposal_data['_id'])
+                        continue
 
-                    if not isinstance(representative_name, unicode):
-                        logger.warning("Can't import proposal {}".format(proposal_data.get('report', '').encode('utf-8')))
-                        logger.warning("Representative not a str {}".format(representative_name))
-                        return (None, None)
+                    found = False
+                    for vote in votes:
+                        if (representative_pk is not None
+                                and representative_pk == vote.representative_id):
 
-                    representative = self.get_representative(
-                        representative_name, proposal.datetime.date(), group_name
-                    )
+                            found = True
+                            break
 
-                    representative_name_group = '{} ({})'.format(representative_name.encode('utf-8'), group_name.encode('utf-8'))
+                        elif (representative_pk is None
+                                and vote.representative_name == representative_name):
+                            found = True
+                            break
 
-                    if representative:
-                        Vote.objects.create(
-                            proposal=proposal,
-                            representative_id=representative,
-                            representative_name=representative_name_group,
-                            position=position.lower()
-                        )
-                    else:
-                        # Despite all efforts we can not find a matching
-                        # representative in db or parltrack
-                        Vote.objects.create(
-                            proposal=proposal,
-                            representative=None,
-                            representative_name=representative_name_group,
-                            position=position.lower()
-                        )
+                    changed = False
+                    if not found:
+                        vote = Vote(proposal_id=proposal.pk,
+                                representative_id=representative_pk,
+                                representative_name=representative_name)
 
-        return (proposal, True)
+                        changed = True
 
-    def get_dossier_title(self, dossier_ref):
-        """Fall back on parltrack for dossier data
-        """
-        logger.debug('Get dossier title from parltrack')
-        url = 'http://parltrack.euwiki.org/dossier/%s?format=json' % dossier_ref
-        json_file = urlopen(url).read()
-        try:
-            dossier_json = json.loads(json_file)
-        except ValueError:
-            logging.warning("Failed to get dossier on parltrack !")
-            logging.warning('{}'.format(dossier_ref.encode('utf-8')))
-            return None
+                    if vote.position != position.lower():
+                        changed = True
+                        vote.position = position.lower()
 
-        return dossier_json['procedure']['title']
+                    if changed:
+                        vote.save()
 
-    def get_representative(self, mep, vote_date, representative_group):
-        """
-        Find representative remote id from its name, the vote date and the representative group
-        it uses the internal db, and if we don’t find him we use the parltrack site
-        """
-        # Only select representatives that have a country mandate at the vote date
-        def representative_filter(**args):
-            mandates = Mandate.objects.select_related('representative').filter(
-                group__kind='country',
-                begin_date__lte=vote_date,
-                end_date__gte=vote_date,
-                **args
-            )
+        return proposal
 
-            return [mandate.representative for mandate in mandates]
+    def index_dossiers(self):
+        self.cache['dossiers'] = {
+            d[0]: d[1] for d in Dossier.objects.values_list('remote_id', 'pk')
+        }
 
-        mep = mep.replace(u"ß", "SS")
-        mep = mep.replace("(The Earl of) ", "")
+    def get_dossier(self, remote_id):
+        return self.cache['dossiers'].get(remote_id, None)
 
-        representative = representative_filter(representative__last_name__iexact=mep)
-        if not representative:
-            representative = representative_filter(representative__last_name__iexact=re.sub("^DE ", "", mep.upper()))
-        if not representative:
-            representative = representative_filter(representative__last_name__contains=mep.upper())
-        if not representative:
-            representative = representative_filter(representative__full_name__contains=re.sub("^MC", "Mc", mep.upper()))
-        if not representative:
-            representative = representative_filter(representative__full_name__icontains=mep)
-        # if not representative:
-            # representative = representative_filter(representative__slug__endswith=slugify(mep))
+    def index_representatives(self):
+        self.cache['meps'] = {l[0]: l[1] for l in
+                Representative.objects.values_list('remote_id', 'pk')}
 
-        if representative:
-            # TODO Ugly hack, we should handle cases where there are multiple results
-            representative = representative[0]
-            return representative.pk
+    def get_representative(self, mep):
+        return self.cache['meps'].get(mep, None)
 
-        mep_display = u'%s %s' % (mep, representative_group)
-        self.cache['groups'].setdefault(representative_group, {})
-
-        if mep in self.cache['groups'][representative_group].keys():
-            return self.cache['groups'][representative_group][mep]
-
-        url = 'http://parltrack.euwiki.org/mep/%s?format=json' % smart_str(mep)
-
-        logger.info(u'Looking for mep %s on parltrack %s', mep_display, url)
-
-        json_file = urlopen(url).read()
-
-        try:
-            mep_ep_json = json.loads(json_file)
-        except ValueError:
-            logger.warning('Failed to get mep on parltrack : %s' % mep_display)
-            self.cache['groups'][representative_group][mep] = None
-            return None
-
-        mep_remote_id = mep_ep_json['UserID']
-        representative = Representative.objects.filter(
-            remote_id=mep_remote_id
-        ).values_list('id', flat=True)[0]
-        if representative_group not in self.cache['groups'].keys():
-             self.cache['groups'][representative_group] = {}
-        self.cache['groups'][representative_group][mep] = representative
-        return representative
 
 def get_number_of_votes():
     response = urlopen('http://parltrack.euwiki.org/')
@@ -320,40 +268,3 @@ def get_number_of_votes():
     tree = etree.parse(response, htmlparser)
     e = tree.xpath(".//*[@id='stats']/ul/li[3]")[0]
     return e.text.split(' ')[-1]
-
-
-def retrieve_xz_json(url, destination):
-    "Download and extract json file from parltrack"
-
-    if os.system("which unxz > /dev/null") != 0:
-        raise Exception("XZ binary missing, please install xz")
-
-    if os.path.exists(destination + '.hash'):
-        with open(destination + '.hash', 'r') as f:
-            etag = f.read()
-    else:
-        etag = False
-
-    print "download lastest data dump of votes from parltrack"
-    request = urlopen(url)
-    request_etag = request.info()['ETag']
-
-    if not etag or not etag == request_etag:
-
-        if os.path.exists(destination + '.xz'):
-            print "Clean old downloaded files"
-            os.remove(destination + '.xz')
-
-        if os.path.exists(destination):
-            os.remove(destination)
-
-        print "Download vote data from parltrack"
-        urlretrieve(url, destination + '.xz')
-
-        with open(destination + '.hash', 'w+') as f:
-            f.write(request_etag)
-
-        print "unxz it"
-        os.system("unxz %s" % destination + '.xz')
-    return destination
-
