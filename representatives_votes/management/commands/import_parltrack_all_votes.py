@@ -136,15 +136,15 @@ class Command(BaseCommand):
         """
         Parse data from parltrack votes db dumps (1 proposal)
         """
-        if 'dossierid' not in vote_data:
-            logger.error('Could not import data %s', vote_data)
+        if 'epref' not in vote_data.keys():
+            logger.error('Could not import data without epref %s', vote_data)
             return
 
-        dossier_pk = self.get_dossier(vote_data['dossierid'])
+        dossier_pk = self.get_dossier(vote_data['epref'])
 
         if not dossier_pk:
             logger.info('Cannot find dossier with remote id %s',
-                    vote_data['dossierid'])
+                    vote_data['epref'])
             return
 
         return self.parse_proposal_data(
@@ -156,6 +156,11 @@ class Command(BaseCommand):
     def parse_proposal_data(self, proposal_data, dossier_pk):
         """Get or Create a proposal model from raw data"""
         proposal_display = '{} ({})'.format(proposal_data['title'].encode('utf-8'), proposal_data.get('report', '').encode('utf-8'))
+
+        if 'issue_type' not in proposal_data.keys():
+            logger.error('This proposal data without issue_type: %s, %s',
+                    proposal_data['epref'], proposal_data)
+            return
 
         changed = False
         try:
@@ -197,7 +202,6 @@ class Command(BaseCommand):
 
         positions = ['For', 'Abstain', 'Against']
         logger.info('Looking for votes in proposal {}'.format(proposal_display))
-        import ipdb; ipdb.set_trace()
         for position in positions:
             for group_vote_data in proposal_data.get(position, {}).get('groups', {}):
                 group_name = group_vote_data['group']
@@ -248,11 +252,11 @@ class Command(BaseCommand):
 
     def index_dossiers(self):
         self.cache['dossiers'] = {
-            d[0]: d[1] for d in Dossier.objects.values_list('remote_id', 'pk')
+            d[0]: d[1] for d in Dossier.objects.values_list('reference', 'pk')
         }
 
-    def get_dossier(self, remote_id):
-        return self.cache['dossiers'].get(remote_id, None)
+    def get_dossier(self, reference):
+        return self.cache['dossiers'].get(reference, None)
 
     def index_representatives(self):
         self.cache['meps'] = {l[0]: l[1] for l in

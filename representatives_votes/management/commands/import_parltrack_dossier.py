@@ -23,23 +23,31 @@ def parse_dossier_data(data):
     dossier, not to import all parltrack data
     """
     changed = False
+    ref = data['procedure']['reference']
+
+    logger.debug('Processing dossier %s', ref)
 
     try:
-        dossier = Dossier.objects.get(
-                reference=data['procedure']['reference'])
+        dossier = Dossier.objects.get(reference=ref)
     except Dossier.DoesNotExist:
-        dossier = Dossier(reference=data['procedure']['reference'])
+        dossier = Dossier(reference=ref)
+        logger.debug('Dossier did not exist')
         changed = True
 
     if dossier.title != data['procedure']['title']:
+        logger.debug('Title changed from "%s" to "%s"', dossier.title,
+                data['procedure']['title'])
         dossier.title = data['procedure']['title']
         changed = True
 
-    if dossier.link != data['meta']['source']:
-        dossier.link = data['meta']['source']
+    source = data['meta']['source'].replace('&l=en', '')
+    if dossier.link != source:
+        logger.debug('Source changed from "%s" to "%s"', dossier.link, source)
+        dossier.link = source
         changed = True
 
     if changed:
+        logger.info('Updated dossier %s', ref)
         dossier.save()
 
 
