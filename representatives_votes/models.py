@@ -23,7 +23,7 @@ from representatives.models import TimeStampedModel, HashableModel, Representati
 
 class Dossier(HashableModel, TimeStampedModel):
     title = models.CharField(max_length=1000)
-    reference = models.CharField(max_length=200)
+    reference = models.CharField(max_length=200, unique=True)
     text = models.TextField(blank=True, default='')
     link = models.URLField()
 
