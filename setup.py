@@ -14,6 +14,12 @@ setup(
     keywords='django government parliament votes',
     install_requires=[
         'django-representatives',
+        'pyprind',
+        'lxml',
+        'py-dateutil',
+        'slugify',
+        'pytz',
+        'ijson',
     ],
     classifiers=[
         'Development Status :: 1 - Alpha/Planning',
