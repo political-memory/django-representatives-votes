@@ -1,5 +1,7 @@
 sudo: false
 language: python
+env:
+- DEBUG=True DJANGO_SETTINGS_MODULE=representatives_votes.tests.settings
 python:
   - "2.7"
 install:
@@ -7,4 +9,4 @@ install:
   - pip install -e git+https://github.com/political-memory/django-representatives.git#egg=representatives
   - pip install -e .
 script:
-  - test_project/manage.py migrate
+- django-admin migrate
