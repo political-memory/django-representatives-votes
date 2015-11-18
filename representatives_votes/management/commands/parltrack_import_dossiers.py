@@ -10,6 +10,8 @@ import ijson
 from django.core.management.base import BaseCommand
 
 from representatives.management.parltrack import retrieve_xz_json
+from representatives.management.commands.parltrack_import_representatives \
+        import GenericImporter
 from representatives_votes.models import Dossier
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,8 @@ class Command(BaseCommand):
 
         with open(path, 'r') as f:
             for dossier in ijson.items(f, 'item'):
+                GenericImporter._travis(self)
+
                 parse_dossier_data(dossier)
 
 

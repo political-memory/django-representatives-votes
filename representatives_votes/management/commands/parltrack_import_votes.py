@@ -118,6 +118,8 @@ class Command(BaseCommand):
         self.index_dossiers()
 
     def manage_vote(self, options, vote_data, i):
+        self._travis()
+
         skip = False
         cont = options.get('continue', False)
         if cont and i < self.cache.get('vote_data_number', 0):
@@ -281,6 +283,18 @@ class Command(BaseCommand):
 
     def get_representative(self, vote_data):
         return self.cache['meps'].get(int(vote_data['UserID']), None)
+
+    def _travis(self):
+        """ Avoid being killed after 10 minutes without output """
+        if not os.environ.get('TRAVIS', False):
+            return
+
+        now = time.time()
+        last_output = getattr(self, '_travis_last_output', None)
+
+        if last_output is None or now - last_output >= 530:
+            print('Do not kill me !')
+            self._travis_last_output = now
 
 
 def get_number_of_votes():
