@@ -21,6 +21,12 @@ setup(
         'pytz',
         'ijson',
     ],
+    entry_points={
+        'console_scripts': [
+            'parltrack_import_dossiers = representatives_votes.management.commands.parltrack_import_dossiers:main',
+            'parltrack_import_votes = representatives_votes.management.commands.parltrack_import_votes:main',
+        ]
+    },
     classifiers=[
         'Development Status :: 1 - Alpha/Planning',
         'Environment :: Web Environment',
