@@ -5,6 +5,7 @@ import copy
 from django.core.serializers.json import Deserializer
 from django.core.management import call_command
 from representatives_votes.contrib.parltrack import import_dossiers
+from representatives_votes.contrib.parltrack import import_single_dossier
 from representatives_votes.contrib.parltrack import import_votes
 from representatives_votes.models import Dossier, Proposal, Vote
 import representatives
@@ -50,3 +51,14 @@ def test_parltrack_import_votes():
         'dossiers_expected.json'))
 
     _test_import('votes', import_votes.main)
+
+
+@pytest.mark.django_db
+def test_parltrack_import_single_dossier():
+    for model in (Representative, Dossier, Proposal, Vote):
+        model.objects.all().delete()
+
+    call_command('loaddata', os.path.join(os.path.abspath(
+        parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
+
+    _test_import('single', import_single_dossier.main)

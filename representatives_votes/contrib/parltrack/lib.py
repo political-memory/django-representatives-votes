@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import django
+import django.dispatch
 
 from dateutil.parser import parse as date_parse
 from django.db import transaction
@@ -9,6 +10,9 @@ from pytz import timezone as date_timezone
 
 from representatives.models import Representative
 from representatives_votes.models import Dossier, Proposal, Vote
+
+
+vote_signal = django.dispatch.Signal(providing_args=['vote_data'])
 
 
 def parse_dossier_data(data, logger):
@@ -44,6 +48,11 @@ def parse_dossier_data(data, logger):
         logger.info('Updated dossier %s', ref)
         dossier.save()
 
+    if 'votes' in data.keys():
+        command = VoteImportCommand(logger)
+        command.init_cache()
+        command.parse_vote_data(data['votes'])
+
 
 def _parse_date(date_str):
     return date_make_aware(
@@ -52,9 +61,8 @@ def _parse_date(date_str):
 
 
 class VoteImportCommand(object):
-    def __init__(self, pre_import_signal, logger):
+    def __init__(self, logger):
         self.logger = logger
-        self.pre_import_signal = pre_import_signal
 
     def init_cache(self):
         self.cache = dict()
@@ -125,7 +133,7 @@ class VoteImportCommand(object):
         if changed:
             proposal.save()
 
-        responses = self.pre_import_signal.send(sender=self,
+        responses = vote_signal.send(sender=self,
             vote_data=proposal_data)
 
         for receiver, response in responses:
@@ -146,14 +154,17 @@ class VoteImportCommand(object):
                     {}):
                 for vote_data in group_vote_data['votes']:
                     if not isinstance(vote_data, dict):
-                        self.logger.error('Skipping vote data %s for proposal %s',
-                                     vote_data, proposal_data['_id'])
+                        self.logger.error(
+                            'Skipping vote data %s for proposal %s',
+                            vote_data, proposal_data['_id'])
                         continue
 
                     representative_pk = self.get_representative(vote_data)
 
                     if representative_pk is None:
-                        self.logger.error('Could not find mep for %s', vote_data)
+                        self.logger.error(
+                            'Could not find mep for %s',
+                            vote_data)
                         continue
 
                     representative_name = vote_data.get('orig', '')
@@ -178,7 +189,8 @@ class VoteImportCommand(object):
 
                     if changed:
                         vote.save()
-                        self.logger.debug('Save vote %s for MEP %s on %s #%s to %s',
+                        self.logger.debug(
+                            'Save vote %s for MEP %s on %s #%s to %s',
                             vote.pk, representative_pk, proposal_data['title'],
                             proposal.pk, position)
 
