@@ -11,7 +11,7 @@ install:
 script:
 - django-admin migrate
 - flake8 representatives_votes/ --exclude migrations --ignore E128
-- django-admin test
+- coverage run $(which django-admin) test
 - cat test/data/dossiers_fixture.json | parltrack_import_dossiers
 - cat test/data/votes_fixture.json | parltrack_import_votes
 after_success:
