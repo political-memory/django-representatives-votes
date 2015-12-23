@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'parltrack_import_dossiers = representatives_votes.contrib.parltrack.import_dossiers:main',
+            'parltrack_import_single_dossier = representatives_votes.contrib.parltrack.import_single_dossier:main',
             'parltrack_import_votes = representatives_votes.contrib.parltrack.import_votes:main',
         ]
     },

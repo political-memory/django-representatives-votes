@@ -15,6 +15,7 @@ script:
 - flake8 representatives_votes/ --exclude migrations --ignore E128
 - py.test
 - cat representatives_votes/contrib/parltrack/tests/dossiers_fixture.json | parltrack_import_dossiers
+- cat representatives_votes/contrib/parltrack/tests/single_fixture.json | parltrack_import_single_dossier
 - cat representatives_votes/contrib/parltrack/tests/votes_fixture.json | parltrack_import_votes
 after_success:
 - codecov

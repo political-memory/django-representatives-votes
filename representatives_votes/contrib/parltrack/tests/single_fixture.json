@@ -1,0 +1,20 @@
+{
+    "meta": {
+        "source": "http://www.europarl.europa.eu/oeil/popups/ficheprocedure.do?reference=2012/2002(INI)",
+        "updated": "2012-10-25T02:02:36.882000"
+    },
+    "procedure": {
+        "dossier_of_the_committee": "DEVE/7/08564",
+        "legal_basis": [
+            "Rules of Procedure of the European Parliament EP 048"
+        ],
+        "reference": "2012/2002(INI)",
+        "stage_reached": "Procedure completed",
+        "subject": [
+            "6.30 Development cooperation"
+        ],
+        "subtype": "Initiative",
+        "title": "Agenda for change: the future of EU development policy",
+        "type": "INI - Own-initiative procedure"
+    }
+}
