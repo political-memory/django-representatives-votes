@@ -9,6 +9,7 @@ from django.apps import apps
 
 from .lib import parse_dossier_data
 
+
 def main(stream=None):
     if not apps.ready:
         django.setup()

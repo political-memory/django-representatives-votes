@@ -52,6 +52,7 @@ def test_parltrack_import_votes():
 
     _test_import('votes', import_votes.main)
 
+
 @pytest.mark.django_db
 def test_parltrack_import_single_dossier():
     for model in (Representative, Dossier, Proposal, Vote):

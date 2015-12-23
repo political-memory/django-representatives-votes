@@ -154,14 +154,17 @@ class VoteImportCommand(object):
                     {}):
                 for vote_data in group_vote_data['votes']:
                     if not isinstance(vote_data, dict):
-                        self.logger.error('Skipping vote data %s for proposal %s',
-                                     vote_data, proposal_data['_id'])
+                        self.logger.error(
+                            'Skipping vote data %s for proposal %s',
+                            vote_data, proposal_data['_id'])
                         continue
 
                     representative_pk = self.get_representative(vote_data)
 
                     if representative_pk is None:
-                        self.logger.error('Could not find mep for %s', vote_data)
+                        self.logger.error(
+                            'Could not find mep for %s',
+                            vote_data)
                         continue
 
                     representative_name = vote_data.get('orig', '')
@@ -186,7 +189,8 @@ class VoteImportCommand(object):
 
                     if changed:
                         vote.save()
-                        self.logger.debug('Save vote %s for MEP %s on %s #%s to %s',
+                        self.logger.debug(
+                            'Save vote %s for MEP %s on %s #%s to %s',
                             vote.pk, representative_pk, proposal_data['title'],
                             proposal.pk, position)
 
