@@ -3,14 +3,13 @@ import logging
 import sys
 from os.path import join
 
-import django.dispatch
 import ijson
 import django
 from django.apps import apps
 
-from .lib import VoteImportCommand
+from .lib import VoteImportCommand, vote_signal
 
-vote_pre_import = django.dispatch.Signal(providing_args=['vote_data'])
+vote_pre_import = vote_signal
 
 
 JSON_URL = 'http://parltrack.euwiki.org/dumps/ep_votes.json.xz'
@@ -23,7 +22,7 @@ def main(stream=None):
 
     logger = logging.getLogger(__name__)
 
-    command = VoteImportCommand(vote_pre_import, logger)
+    command = VoteImportCommand(logger)
     command.init_cache()
 
     for vote_data in ijson.items(stream or sys.stdin, 'item'):

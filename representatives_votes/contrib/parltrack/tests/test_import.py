@@ -54,4 +54,10 @@ def test_parltrack_import_votes():
 
 @pytest.mark.django_db
 def test_parltrack_import_single_dossier():
+    for model in (Representative, Dossier, Proposal, Vote):
+        model.objects.all().delete()
+
+    call_command('loaddata', os.path.join(os.path.abspath(
+        parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
+
     _test_import('single', import_single_dossier.main)
