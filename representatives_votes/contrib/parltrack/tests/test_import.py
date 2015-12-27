@@ -49,4 +49,6 @@ def test_parltrack_import_votes():
     call_command('loaddata', os.path.join(os.path.dirname(__file__),
         'dossiers_expected.json'))
 
+    Dossier.objects.update(synchronize=True)
+
     _test_import('votes', import_votes.main)

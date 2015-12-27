@@ -46,9 +46,14 @@ class Command(object):
 
         dossier_pk = self.get_dossier(vote_data['epref'])
 
-        if not dossier_pk:
+        if dossier_pk is None:
             logger.debug('Cannot find dossier with remote id %s',
-                         vote_data['epref'])
+                 vote_data['epref'])
+            return
+
+        elif dossier_pk is False:
+            logger.debug('Dossier %s not marked for synchronization',
+                vote_data['epref'])
             return
 
         return self.parse_proposal_data(
@@ -159,7 +164,9 @@ class Command(object):
 
     def index_dossiers(self):
         self.cache['dossiers'] = {
-            d[0]: d[1] for d in Dossier.objects.values_list('reference', 'pk')
+            d[0]: (d[1] if d[2] else False)
+            for d in Dossier.objects.values_list('reference', 'pk',
+                'synchronize')
         }
 
     def get_dossier(self, reference):
