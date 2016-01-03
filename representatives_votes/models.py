@@ -20,6 +20,12 @@ class Dossier(HashableModel, TimeStampedModel):
     def get_absolute_url(self):
         return reverse('representatives_votes:dossier-detail', args=(self.pk,))
 
+    def sync(self, refresh=True, source=None):
+        from .contrib.parltrack.sync import sync_dossier
+        sync_dossier(self.reference, source)
+        if refresh:
+            self.refresh_from_db()
+
 
 class Proposal(HashableModel, TimeStampedModel):
     dossier = models.ForeignKey(Dossier, related_name='proposals')
