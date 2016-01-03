@@ -49,14 +49,14 @@ class ImportTest(TestCase):
 
     def test_parltrack_import_single_dossier(self):
         call_command('loaddata', os.path.join(os.path.abspath(
-            parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
+            parltrack.__path__[0]), 'tests', 'representatives_fixture.json'))
 
         with self.assertNumQueries(16):
             self._test_import('single', import_single_dossier.main)
 
     def test_parltrack_import_votes(self):
         call_command('loaddata', os.path.join(os.path.abspath(
-            parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
+            parltrack.__path__[0]), 'tests', 'representatives_fixture.json'))
         call_command('loaddata', self._get_datapath('dossiers_expected.json'))
 
         with self.assertNumQueries(65):
