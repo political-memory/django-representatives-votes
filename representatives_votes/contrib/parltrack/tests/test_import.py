@@ -4,6 +4,7 @@ import copy
 
 from django.core.serializers.json import Deserializer
 from django.core.management import call_command
+from django.test import TestCase
 from representatives_votes.contrib.parltrack import import_dossiers
 from representatives_votes.contrib.parltrack import import_votes
 from representatives_votes.models import Dossier, Proposal, Vote
@@ -50,3 +51,31 @@ def test_parltrack_import_votes():
         'dossiers_expected.json'))
 
     _test_import('votes', import_votes.main)
+
+
+class DossierTest(TestCase):
+    def setUp(self):
+        for model in (Representative, Dossier, Proposal, Vote):
+            model.objects.all().delete()
+
+    def test_parltrack_import_single_dossier(self):
+        call_command('loaddata', os.path.join(os.path.abspath(
+            representatives.__path__[0]), 'fixtures',
+            'representatives_test.json'))
+
+        with self.assertNumQueries(16):
+            _test_import('single', import_dossiers.import_single)
+
+    def test_parltrack_sync_dossier(self):
+        call_command('loaddata', os.path.join(os.path.abspath(
+            representatives.__path__[0]), 'fixtures',
+            'representatives_test.json'))
+        call_command('loaddata', os.path.join(os.path.dirname(__file__),
+            'sync_fixture.json'))
+
+        def callback(stream):
+            dossier = Dossier.objects.get(reference='2012/2002(INI)')
+            dossier.parltrack_sync(True)
+
+        with self.assertNumQueries(5):
+            _test_import('sync', callback)
