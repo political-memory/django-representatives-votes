@@ -42,18 +42,46 @@ class ImportTest(TestCase):
                 type(obj.object).objects.get(**compare)
 
     def test_parltrack_import_dossiers(self):
-        self._test_import('dossiers', import_dossiers.main)
+        with self.assertNumQueries(15):
+            self._test_import('dossiers', import_dossiers.main)
 
     def test_parltrack_import_single_dossier(self):
         call_command('loaddata', os.path.join(os.path.abspath(
             parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
 
-        self._test_import('single', import_single_dossier.main)
+        with self.assertNumQueries(16):
+            self._test_import('single', import_single_dossier.main)
 
     def test_parltrack_import_votes(self):
         call_command('loaddata', os.path.join(os.path.abspath(
             parltrack.__path__[0]), 'tests', 'representatives_expected.json'))
-        call_command('loaddata',
-            self._get_datapath('dossiers_expected.json'))
+        call_command('loaddata', self._get_datapath('dossiers_expected.json'))
 
-        self._test_import('votes', import_votes.main)
+        with self.assertNumQueries(65):
+            self._test_import('votes', import_votes.main)
+
+    def test_dossier_sync(self):
+        call_command('loaddata', self._get_datapath('sync_initial.json'))
+
+        dossier = Dossier.objects.get(reference='2012/2002(INI)')
+
+        with self.assertNumQueries(3):
+            dossier.sync()
+
+        exp = "Agenda for change: the future of EU development policy"
+        assert dossier.title == exp
+
+    def test_dossier_sync_norefresh(self):
+        call_command('loaddata', self._get_datapath('sync_initial.json'))
+
+        dossier = Dossier.objects.get(reference='2012/2002(INI)')
+
+        with self.assertNumQueries(2):
+            dossier.sync(False)
+
+        assert dossier.title == 'initial title'
+
+        dossier.refresh_from_db()
+
+        exp = "Agenda for change: the future of EU development policy"
+        assert dossier.title == exp

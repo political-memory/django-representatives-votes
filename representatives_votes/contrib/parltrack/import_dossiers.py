@@ -9,9 +9,6 @@ from django.apps import apps
 
 from .lib import parse_dossier_data
 
-URL = 'http://parltrack.euwiki.org/dumps/ep_dossiers.json.xz'
-LOCAL_PATH = 'ep_dossiers.json.xz'
-
 
 def main(stream=None):
     if not apps.ready:

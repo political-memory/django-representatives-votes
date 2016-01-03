@@ -48,7 +48,7 @@ def parse_dossier_data(data, logger):
         logger.info('Updated dossier %s', ref)
         dossier.save()
 
-    if 'votes' in data.keys():
+    if 'votes' in data.keys() and 'epref' in data['votes']:
         command = VoteImportCommand(logger)
         command.init_cache()
         command.parse_vote_data(data['votes'])
