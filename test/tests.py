@@ -12,6 +12,8 @@ from representatives_votes.contrib.parltrack import import_single_dossier
 from representatives_votes.contrib.parltrack import import_votes
 from representatives_votes.models import Dossier, Proposal, Vote
 
+from .parltrack_stub import TestDataSource
+
 
 class ImportTest(TestCase):
     def setUp(self):
@@ -66,7 +68,7 @@ class ImportTest(TestCase):
         dossier = Dossier.objects.get(reference='2012/2002(INI)')
 
         with self.assertNumQueries(3):
-            dossier.sync()
+            dossier.sync(True, TestDataSource())
 
         exp = "Agenda for change: the future of EU development policy"
         assert dossier.title == exp
@@ -77,7 +79,7 @@ class ImportTest(TestCase):
         dossier = Dossier.objects.get(reference='2012/2002(INI)')
 
         with self.assertNumQueries(2):
-            dossier.sync(False)
+            dossier.sync(False, TestDataSource())
 
         assert dossier.title == 'initial title'
 
