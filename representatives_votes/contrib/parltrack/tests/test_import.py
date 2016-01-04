@@ -1,6 +1,7 @@
-import pytest
-import os
 import copy
+import mock
+import os
+import pytest
 
 from django.core.serializers.json import Deserializer
 from django.core.management import call_command
@@ -73,8 +74,19 @@ class DossierTest(TestCase):
         call_command('loaddata', os.path.join(os.path.dirname(__file__),
             'sync_fixture.json'))
 
-        def callback(stream):
-            import_dossiers.sync_dossier('2012/2002(INI)')
+        reference = '2012/2002(INI)'
+        mock_file = os.path.join(os.path.dirname(__file__),
+            'parltrack_dossier_%s.json' % reference.replace('/', '-'))
+        expected_url = '%s/dossier/%s?format=json' % (import_dossiers.BASEURL,
+            reference)
 
-        with self.assertNumQueries(3):
-            _test_import('sync', callback)
+        with mock.patch('urllib2.urlopen') as urlopen:
+            urlopen.return_value = open(mock_file, 'r')
+
+            def callback(stream):
+                import_dossiers.sync_dossier(reference)
+
+            with self.assertNumQueries(3):
+                _test_import('sync', callback)
+
+            urlopen.assert_called_with(expected_url)
