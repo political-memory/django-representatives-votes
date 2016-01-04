@@ -74,8 +74,7 @@ class DossierTest(TestCase):
             'sync_fixture.json'))
 
         def callback(stream):
-            dossier = Dossier.objects.get(reference='2012/2002(INI)')
-            dossier.parltrack_sync(True)
+            import_dossiers.sync_dossier('2012/2002(INI)')
 
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(3):
             _test_import('sync', callback)
