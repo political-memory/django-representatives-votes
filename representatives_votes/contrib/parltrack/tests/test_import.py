@@ -80,13 +80,14 @@ class DossierTest(TestCase):
         expected_url = '%s/dossier/%s?format=json' % (import_dossiers.BASEURL,
             reference)
 
+        def callback(stream):
+            import_dossiers.sync_dossier(reference)
+
         with mock.patch('urllib2.urlopen') as urlopen:
-            urlopen.return_value = open(mock_file, 'r')
+            with open(mock_file, 'r') as mock_stream:
+                urlopen.return_value = mock_stream
 
-            def callback(stream):
-                import_dossiers.sync_dossier(reference)
-
-            with self.assertNumQueries(3):
-                _test_import('sync', callback)
+                with self.assertNumQueries(3):
+                    _test_import('sync', callback)
 
             urlopen.assert_called_with(expected_url)
