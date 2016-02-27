@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='django-representatives-votes',
-    version='0.0.15',
+    version='0.0.16',
     description='Base app for government representative votes',
     author='Olivier Le Thanh Duong, Laurent Peuch, Arnaud Fabre, James Pic',
     author_email='olivier@lethanh.be',
@@ -12,7 +12,7 @@ setup(
     license='GPLv3',
     keywords='django government parliament votes',
     install_requires=[
-        'django-representatives>=0.0.15',
+        'django-representatives>=0.0.16',
         'py-dateutil',
         'pytz',
         'ijson',
