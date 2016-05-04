@@ -51,13 +51,6 @@ class DossierViewSet(viewsets.ReadOnlyModelViewSet):
 
     ordering_fields = ('id', 'reference')
 
-    def list(self, request):
-        return super(DossierViewSet, self).list(request)
-
-    def retrieve(self, request, pk=None):
-        self.serializer_class = DossierDetailSerializer
-        return super(DossierViewSet, self).retrieve(request, pk)
-
 
 class ProposalViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -123,9 +116,3 @@ class VoteViewSet(viewsets.ReadOnlyModelViewSet):
         'representative_name': ['exact', 'icontains'],
         'representative': ['exact']
     }
-
-    def list(self, request):
-        return super(VoteViewSet, self).list(request)
-
-    def retrieve(self, request, pk=None):
-        return super(VoteViewSet, self).retrieve(request, pk)
