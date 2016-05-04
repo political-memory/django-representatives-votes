@@ -97,6 +97,8 @@ class Command(object):
                 changed = True
 
         if changed:
+            logger.debug('Saving proposal %s' %
+                proposal_data.get('epref', proposal_data['title']))
             proposal.save()
 
         responses = vote_pre_import.send(sender=self, vote_data=proposal_data)
@@ -104,8 +106,9 @@ class Command(object):
         for receiver, response in responses:
             if response is False:
                 logger.debug(
-                    'Skipping dossier %s', proposal_data.get(
-                        'epref', proposal_data['title']))
+                    'Skipping votes for dossier %s because of %s',
+                    proposal_data.get( 'epref', proposal_data['title']),
+                    receiver)
                 return
 
         positions = ['For', 'Abstain', 'Against']
