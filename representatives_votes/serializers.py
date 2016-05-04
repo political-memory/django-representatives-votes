@@ -23,6 +23,7 @@ class ProposalSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.Proposal
         fields = (
+            'id',
             'dossier',
             'title',
             'description',
@@ -39,24 +40,21 @@ class ProposalSerializer(serializers.HyperlinkedModelSerializer):
 class ProposalDetailSerializer(ProposalSerializer):
     """ Proposal serializer that includes votes """
 
-    votes = VoteSerializer(many=True)
-
-    class Meta:
-        model = models.Proposal
-        fields = ProposalSerializer.Meta.fields + ('votes',)
-
 
 class DossierSerializer(serializers.HyperlinkedModelSerializer):
     """ Base dossier serializer """
+    proposals = ProposalSerializer(many=True)
 
     class Meta:
         model = models.Dossier
         fields = (
+            'id',
             'title',
             'reference',
             'text',
             'link',
             'url',
+            'proposals',
         )
 
 
@@ -64,7 +62,6 @@ class DossierDetailSerializer(DossierSerializer):
     """
     Dossier serializer that includes proposals and votes.
     """
-
     proposals = ProposalSerializer(many=True)
 
     class Meta:
