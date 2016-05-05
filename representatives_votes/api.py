@@ -26,7 +26,7 @@ class DossierViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     pagination_class = DefaultWebPagination
-    queryset = Dossier.objects.prefetch_related('proposals__votes__representative')
+    queryset = Dossier.objects.all()
     serializer_class = DossierSerializer
 
     filter_backends = (

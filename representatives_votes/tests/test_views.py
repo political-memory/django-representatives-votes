@@ -31,5 +31,8 @@ class RepresentativeManagerTest(test.TestCase):
     def test_vote(self):
         self.functional_test(1, '/api/votes/1/')
 
+    def test_proposals(self):
+        self.functional_test(1, '/api/proposals/')
+
     def test_votes(self):
         self.functional_test(1, '/api/votes/')
