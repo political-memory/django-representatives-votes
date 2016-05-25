@@ -43,7 +43,6 @@ class ProposalDetailSerializer(ProposalSerializer):
 
     class Meta:
         model = models.Proposal
-        fields = ProposalSerializer.Meta.fields + ('votes',)
 
 
 class DossierSerializer(serializers.HyperlinkedModelSerializer):
@@ -64,8 +63,7 @@ class DossierDetailSerializer(DossierSerializer):
     """
     Dossier serializer that includes proposals and votes.
     """
-
-    proposals = ProposalSerializer(many=True)
+    proposals = ProposalDetailSerializer(many=True)
 
     class Meta:
         model = models.Dossier
