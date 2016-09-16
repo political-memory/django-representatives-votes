@@ -16,6 +16,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'representatives',
     'representatives_votes',
+    'representatives_votes.contrib.parltrack',
 )
 
 DEBUG = True
