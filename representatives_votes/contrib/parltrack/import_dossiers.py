@@ -75,8 +75,8 @@ def sync_dossier(reference):
     url = '%s/dossier/%s?format=json' % (BASEURL, reference)
 
     logger.debug('Syncing dossier from %s' % url)
-    with urllib2.urlopen(url) as stream:
-        import_single(stream)
+    stream = urllib2.urlopen(url)
+    import_single(stream)
 
 
 def import_single(stream):
